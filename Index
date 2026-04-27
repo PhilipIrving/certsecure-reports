@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertSecure — Report Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1E2E3D;
+      --blue: #3872B8;
+      --blue-hover: #2D5F99;
+      --blue-light: #EBF2FB;
+      --bg: #EFF3F8;
+      --white: #FFFFFF;
+      --border: #D1DCE8;
+      --text: #1E2E3D;
+      --muted: #5A6B7B;
+      --green: #16A34A;
+      --green-bg: #F0FDF4;
+      --red: #DC2626;
+      --red-bg: #FEF2F2;
+      --orange: #EA580C;
+      --font: 'Outfit', sans-serif;
+      --radius: 10px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--navy);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-logo { height: 34px; object-fit: contain; }
+    .header-logo-fallback {
+      display: none;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+    .header-logo-fallback span {
+      background: var(--blue);
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-left: 1px;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.2); }
+    .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Main ── */
+    .main { max-width: 1060px; margin: 0 auto; padding: 32px 24px 60px; }
+
+    /* ── Page header ── */
+    .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .page-hdr { margin-bottom: 24px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-title { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 16px; }
+
+    /* ── Client grid ── */
+    .struct-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 20px 0 10px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .struct-label:first-child { margin-top: 0; }
+    .client-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 9px;
+    }
+    .client-card {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 13px 15px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--white);
+      user-select: none;
+    }
+    .client-card:hover { border-color: var(--blue); background: var(--blue-light); }
+    .client-card.selected {
+      border-color: var(--blue);
+      background: var(--blue-light);
+      box-shadow: 0 0 0 3px rgba(56,114,184,0.15);
+    }
+    .client-name { font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.35; }
+    .client-badge {
+      display: inline-block;
+      margin-top: 7px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge-general  { background: #DBEAFE; color: #1D4ED8; }
+    .badge-project  { background: #D1FAE5; color: #065F46; }
+    .badge-location { background: #FEF3C7; color: #92400E; }
+
+    /* ── Client banner ── */
+    .client-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 13px 18px;
+      background: var(--blue-light);
+      border: 1px solid #BFDBFE;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .banner-name { font-size: 14px; font-weight: 700; color: var(--navy); }
+    .banner-struct { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .banner-change {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--blue);
+      cursor: pointer;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .banner-change:hover { text-decoration: underline; }
+
+    /* ── Report cards ── */
+    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 680px) { .report-grid { grid-template-columns: 1fr; } }
+    .report-card { border: 2px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
+    .report-card.on { border-color: var(--blue); }
+    .report-card-hdr {
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .report-card.on .report-card-hdr { background: var(--blue-light); border-bottom-color: #BFDBFE; }
+    .rc-dot {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--white);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .report-card.on .rc-dot { background: var(--blue); border-color: var(--blue); }
+    .rc-dot::after { content:''; width:7px; height:7px; border-radius:50%; background:white; opacity:0; }
+    .report-card.on .rc-dot::after { opacity: 1; }
+    .rc-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .rc-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .rc-type { margin-left: auto; padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+    .type-excel { background: #D1FAE5; color: #065F46; }
+    .type-pdf   { background: #FEE2E2; color: #991B1B; }
+    .report-card-body { padding: 15px; display: none; }
+    .report-card.on .report-card-body { display: block; }
+
+    /* ── Checkboxes ── */
+    .cb-group { display: flex; flex-direction: column; gap: 7px; }
+    .cb-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text); }
+    .cb-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--blue); cursor: pointer; flex-shrink: 0; }
+
+    /* ── Section divider ── */
+    .sec-div {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 13px 0 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Filters ── */
+    .filter-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .filter-grp { flex: 1; min-width: 130px; }
+    .filter-lbl { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+    select, input[type="text"], input[type="date"] {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--text);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input:focus { border-color: var(--blue); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: var(--blue-hover); }
+    .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    .btn-secondary { background: var(--white); color: var(--navy); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-success { background: var(--green); color: white; }
+    .btn-success:hover { background: #15803D; }
+    .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
+
+    /* ── Progress ── */
+    .progress-area { text-align: center; padding: 48px 20px; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-lbl { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .progress-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Downloads ── */
+    .dl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; }
+    .dl-card { border: 1px solid var(--border); border-radius: 8px; padding: 20px 16px; text-align: center; }
+    .dl-icon { font-size: 36px; margin-bottom: 10px; }
+    .dl-name { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 14px; line-height: 1.3; }
+
+    /* ── Settings modal ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 510px; padding: 26px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+    .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-title { font-size: 17px; font-weight: 700; color: var(--navy); }
+    .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--muted); line-height: 1; padding: 2px; }
+    .modal-close:hover { color: var(--text); }
+    .form-grp { margin-bottom: 14px; }
+    .form-lbl { display: block; font-size: 12px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 11px 18px; border-radius: 8px;
+      background: var(--navy); color: white;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transform: translateY(8px);
+      transition: all 0.25s; z-index: 200; pointer-events: none;
+      max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: var(--green); }
+    .toast.error   { background: var(--red); }
+
+    /* ── Info box ── */
+    .info-box { background: var(--blue-light); border: 1px solid #BFDBFE; border-radius: 8px; padding: 11px 14px; font-size: 12px; color: #1E40AF; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="header">
+  <img src="assets/logo.png" alt="CertSecure"
+       class="header-logo"
+       onerror="this.style.display='none'; document.getElementById('logo-text').style.display='flex'">
+  <div id="logo-text" class="header-logo-fallback">CERT<span>SECURE</span></div>
+  <div class="header-right">
+    <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
+    <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ SETTINGS MODAL ═══════════════════ -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">⚙ Settings</span>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+
+    <div class="form-grp">
+      <label class="form-lbl">GitHub Repository Owner</label>
+      <input type="text" id="s-owner" placeholder="e.g. PhilipIrving">
+      <div class="form-hint">Your GitHub username or organization name</div>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Repository Name</label>
+      <input type="text" id="s-repo" placeholder="e.g. evident-powerbi">
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Branch</label>
+      <input type="text" id="s-branch" placeholder="main">
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">GitHub Personal Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <input type="text" id="s-pat" placeholder="ghp_...">
+      <div class="form-hint">Only needed for the "Refresh Data" button. Requires <strong>workflow</strong> scope. Leave blank if not using refresh.</div>
+    </div>
+
+    <hr class="modal-divider">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">CSV File Paths (in your repo)</div>
+
+    <div class="form-grp">
+      <label class="form-lbl">Insureds / Parties CSV</label>
+      <input type="text" id="s-insureds" placeholder="data/insureds.csv">
+      <div class="form-hint">Main compliance data — entity names, status, expiration dates</div>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Requirements / Coverage CSV</label>
+      <input type="text" id="s-requirements" placeholder="data/requirements.csv">
+      <div class="form-hint">Per-coverage compliance data — used for NC by Coverage and Expiring Coverage sheets</div>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Notifications / Engagement CSV</label>
+      <input type="text" id="s-notifications" placeholder="data/notifications.csv">
+      <div class="form-hint">Email engagement data — used for all Engagement reports</div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="main">
+
+  <!-- ── STEP 1: CLIENT SELECTION ── -->
+  <div id="step-1">
+    <div class="page-hdr">
+      <div class="page-title">Report Generator</div>
+      <div class="page-sub">Select a client to get started</div>
+    </div>
+    <div class="card">
+      <div class="struct-label">General — Shown by Entity Type</div>
+      <div class="client-grid" id="grid-general"></div>
+      <div class="struct-label">Subcontractors — Shown by Project</div>
+      <div class="client-grid" id="grid-project"></div>
+      <div class="struct-label">Tenants — Shown by Location</div>
+      <div class="client-grid" id="grid-location"></div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: CONFIGURE ── -->
+  <div id="step-2" style="display:none">
+    <div class="page-hdr">
+      <div class="page-title">Configure Report</div>
+      <div class="page-sub">Choose which reports to generate and customize each one</div>
+    </div>
+
+    <div class="client-banner" id="client-banner">
+      <div>
+        <div class="banner-name" id="banner-name"></div>
+        <div class="banner-struct" id="banner-struct"></div>
+      </div>
+      <span class="banner-change" onclick="goTo(1)">← Change Client</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Select Reports to Generate</div>
+      <div class="report-grid">
+
+        <!-- Compliance Summary PDF -->
+        <div class="report-card" id="rc-cs">
+          <div class="report-card-hdr" onclick="toggleReport('cs')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Compliance Summary</div><div class="rc-sub">Executive compliance overview</div></div>
+            <span class="rc-type type-pdf">PDF</span>
+          </div>
+          <div class="report-card-body">
+            <div class="sec-div">Sections to Include</div>
+            <div class="cb-group">
+              <label class="cb-item"><input type="checkbox" id="cs-kpi" checked> Program KPI Cards (Active, Compliant, Non-Compliant, New)</label>
+              <label class="cb-item"><input type="checkbox" id="cs-breakdown" checked> Compliance Status Breakdown</label>
+              <label class="cb-item"><input type="checkbox" id="cs-coi" checked> COI Submission Status</label>
+              <label class="cb-item"><input type="checkbox" id="cs-nocoi" checked> No COI on File — Breakdown</label>
+              <label class="cb-item"><input type="checkbox" id="cs-expiring" checked> Expiring Coverage (7 / 30 / 60 / 90 days)</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compliance Detail Excel -->
+        <div class="report-card" id="rc-cd">
+          <div class="report-card-hdr" onclick="toggleReport('cd')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Compliance Detail</div><div class="rc-sub">Full entity-level compliance data</div></div>
+            <span class="rc-type type-excel">Excel</span>
+          </div>
+          <div class="report-card-body">
+            <div class="sec-div">Sheets to Include</div>
+            <div class="cb-group">
+              <label class="cb-item"><input type="checkbox" id="cd-summary" checked> Summary</label>
+              <label class="cb-item"><input type="checkbox" id="cd-entitylist" checked> <span id="cd-entity-lbl">Entity List</span></label>
+              <label class="cb-item"><input type="checkbox" id="cd-expiring" checked> Expiring Coverage</label>
+              <label class="cb-item"><input type="checkbox" id="cd-nccoverage" checked> NC by Coverage &amp; Criteria</label>
+              <label class="cb-item"><input type="checkbox" id="cd-ncreasons" checked> Non-Compliance Reasons</label>
+            </div>
+            <div class="sec-div">Compliance Status Filter</div>
+            <select id="cd-status">
+              <option value="all">All Statuses</option>
+              <option value="non_compliant">Non-Compliant Only</option>
+              <option value="compliant">Compliant Only</option>
+              <option value="pending">New / Pending Only</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Engagement Summary PDF -->
+        <div class="report-card" id="rc-es">
+          <div class="report-card-hdr" onclick="toggleReport('es')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Engagement Summary</div><div class="rc-sub">Email engagement overview</div></div>
+            <span class="rc-type type-pdf">PDF</span>
+          </div>
+          <div class="report-card-body">
+            <div class="sec-div">Sections to Include</div>
+            <div class="cb-group">
+              <label class="cb-item"><input type="checkbox" id="es-kpi" checked> Email KPI Cards (Sent, Opened, Clicked, Issues)</label>
+              <label class="cb-item"><input type="checkbox" id="es-openrate" checked> Open Rate Breakdown</label>
+              <label class="cb-item"><input type="checkbox" id="es-delivery" checked> Deliverability Status</label>
+              <label class="cb-item"><input type="checkbox" id="es-issues" checked> Delivery Issue Breakdown (Hard Bounce, Rejected, etc.)</label>
+              <label class="cb-item"><input type="checkbox" id="es-60day" checked> 60-Day Activity Window &amp; Funnel</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Engagement Detail Excel -->
+        <div class="report-card" id="rc-ed">
+          <div class="report-card-hdr" onclick="toggleReport('ed')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Engagement Detail</div><div class="rc-sub">Entity-level engagement &amp; email data</div></div>
+            <span class="rc-type type-excel">Excel</span>
+          </div>
+          <div class="report-card-body">
+            <div class="sec-div">Sheets to Include</div>
+            <div class="cb-group">
+              <label class="cb-item"><input type="checkbox" id="ed-summary" checked> Summary</label>
+              <label class="cb-item"><input type="checkbox" id="ed-nocoi" checked> No COIs on File</label>
+              <label class="cb-item"><input type="checkbox" id="ed-noeng" checked> No Engagement Since Go-Live</label>
+              <label class="cb-item"><input type="checkbox" id="ed-ncnoeng" checked> NC + No Recent Engagement</label>
+              <label class="cb-item"><input type="checkbox" id="ed-undel" checked> Undeliverable Emails</label>
+            </div>
+            <div class="sec-div">Engagement Window</div>
+            <select id="ed-window">
+              <option value="60">Last 60 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
+          </div>
+        </div>
+
+      </div><!-- /report-grid -->
+
+      <!-- Global filters -->
+      <div style="margin-top:20px">
+        <div class="sec-div">Global Filters</div>
+        <div class="filter-row">
+          <div class="filter-grp">
+            <div class="filter-lbl">Expiring Within</div>
+            <select id="g-expiring">
+              <option value="">No filter</option>
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+              <option value="60">60 days</option>
+              <option value="90">90 days</option>
+            </select>
+          </div>
+          <div class="filter-grp">
+            <div class="filter-lbl">Report Date</div>
+            <input type="date" id="g-date">
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
+        <button class="btn btn-primary" id="gen-btn" onclick="generate()" disabled>
+          ⬇ Generate Reports
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: GENERATING / DONE ── -->
+  <div id="step-3" style="display:none">
+    <div class="page-hdr">
+      <div class="page-title" id="s3-title">Generating Reports…</div>
+      <div class="page-sub" id="s3-sub">Please wait while your reports are built</div>
+    </div>
+    <div class="card">
+
+      <div id="gen-area" class="progress-area">
+        <div class="spinner"></div>
+        <div class="progress-lbl" id="prog-lbl">Fetching data…</div>
+        <div class="progress-sub" id="prog-sub">Loading CSV files from GitHub</div>
+      </div>
+
+      <div id="done-area" style="display:none">
+        <div style="text-align:center;padding:16px 0 24px">
+          <div style="font-size:44px;margin-bottom:10px">✅</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy)">Reports Ready</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Click Download on each report below</div>
+        </div>
+        <div class="dl-grid" id="dl-grid"></div>
+        <div class="action-bar" style="margin-top:22px">
+          <button class="btn btn-secondary" onclick="goTo(2)">← Reconfigure</button>
+          <button class="btn btn-secondary" onclick="goTo(1)">Generate for Another Client</button>
+        </div>
+      </div>
+
+      <div id="err-area" style="display:none">
+        <div style="text-align:center;padding:16px 0 24px">
+          <div style="font-size:44px;margin-bottom:10px">❌</div>
+          <div style="font-size:17px;font-weight:700;color:var(--red)">Generation Failed</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px" id="err-msg">An error occurred</div>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
+          <button class="btn btn-primary" onclick="generate()">Try Again</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ──────────────────────────────────────────────
+// CLIENT CONFIGURATION
+// ──────────────────────────────────────────────
+// 'key' must match the value in the 'client' column of your CSVs.
+// Update keys here if they differ from your actual CSV values.
+
+const CLIENTS = [
+  { name: "A G Equipment",                      key: "agequipment",        structure: "general"  },
+  { name: "Canadian Pacific Kansas City",        key: "cpkansascity",       structure: "general"  },
+  { name: "Capital Railroad Contracting, Inc.",  key: "capitalrailroad",    structure: "general"  },
+  { name: "Kolb Grading",                        key: "kolbgrading",        structure: "general"  },
+  { name: "Mizuho Bank",                         key: "mizuhobank",         structure: "general"  },
+  { name: "Musselman & Hall Contractors, LLC",   key: "musselmanhall",      structure: "general"  },
+  { name: "Paragon Geophysical Services, Inc.",  key: "paragongeophysical", structure: "general"  },
+  { name: "Trinity Chemical Industries LLC",     key: "trinitychemical",    structure: "general"  },
+  { name: "United Coal Company LLC",             key: "unitedcoal",         structure: "general"  },
+  { name: "BAUER Foundation Corp.",              key: "bauer",              structure: "project"  },
+  { name: "ESS Companies",                       key: "esscompanies",       structure: "project"  },
+  { name: "Scandroli Construction",              key: "scandroli",          structure: "project"  },
+  { name: "Skyline Developers Construction LLC", key: "skylinedevelopers",  structure: "project"  },
+  { name: "EMMES",                               key: "emmes",              structure: "location" },
+  { name: "Gart Properties",                     key: "gartproperties",     structure: "location" },
+  { name: "The Abbey Management Company",        key: "theabbeycompany",    structure: "location" },
+];
+
+const STRUCT = {
+  general:  { label: "General",        groupCol: "entity_type",   groupLabel: "Entity Type", badgeClass: "badge-general"  },
+  project:  { label: "Subcontractors", groupCol: "project_name",  groupLabel: "Project",     badgeClass: "badge-project"  },
+  location: { label: "Tenants",        groupCol: "location_name", groupLabel: "Location",    badgeClass: "badge-location" },
+};
+
+// ──────────────────────────────────────────────
+// CSV COLUMN MAPPINGS
+// These must match the actual column headers in your CSV files.
+// Update here if your CSVs use different names.
+// ──────────────────────────────────────────────
+const C = {
+  // insureds.csv
+  client:        'client',
+  entity_name:   'display_name',
+  contract_num:  'contract_number',
+  entity_type:   'party_type',
+  project_name:  'project_name',
+  location_name: 'location_name',
+  status:        'compliance_status',
+  verify_status: 'verification_status',
+  next_exp:      'next_expiration',
+  email:         'contact_email',
+  has_coi:       'has_coi',
+  // requirements.csv
+  coverage_type: 'coverage_type',
+  nc_reason:     'non_compliance_reason',
+  exp_date:      'expiration_date',
+  days_until:    'days_until_expiration',
+  // notifications.csv
+  notif_email:   'email_address',
+  notif_client:  'client',
+  issue_type:    'issue_type',
+  sent_at:       'sent_at',
+  subject:       'subject',
+  opened:        'opened',
+  clicked:       'clicked',
+};
+
+// ──────────────────────────────────────────────
+// SETTINGS (stored in localStorage)
+// ──────────────────────────────────────────────
+const DEFAULTS = {
+  owner: 'PhilipIrving',
+  repo:  'evident-powerbi',
+  branch:'main',
+  pat:   '',
+  insuredsPath:     'data/insureds.csv',
+  requirementsPath: 'data/requirements.csv',
+  notificationsPath:'data/notifications.csv',
+};
+
+function getSettings() {
+  return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('cs-settings') || '{}') };
+}
+
+function openSettings() {
+  const s = getSettings();
+  document.getElementById('s-owner').value       = s.owner;
+  document.getElementById('s-repo').value        = s.repo;
+  document.getElementById('s-branch').value      = s.branch;
+  document.getElementById('s-pat').value         = s.pat;
+  document.getElementById('s-insureds').value    = s.insuredsPath;
+  document.getElementById('s-requirements').value= s.requirementsPath;
+  document.getElementById('s-notifications').value = s.notificationsPath;
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function saveSettings() {
+  localStorage.setItem('cs-settings', JSON.stringify({
+    owner:            document.getElementById('s-owner').value.trim(),
+    repo:             document.getElementById('s-repo').value.trim(),
+    branch:           document.getElementById('s-branch').value.trim() || 'main',
+    pat:              document.getElementById('s-pat').value.trim(),
+    insuredsPath:     document.getElementById('s-insureds').value.trim(),
+    requirementsPath: document.getElementById('s-requirements').value.trim(),
+    notificationsPath:document.getElementById('s-notifications').value.trim(),
+  }));
+  closeSettings();
+  toast('Settings saved', 'success');
+}
+
+// ──────────────────────────────────────────────
+// DATA LOADING
+// ──────────────────────────────────────────────
+async function fetchCSV(path) {
+  const { owner, repo, branch } = getSettings();
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}). Check Settings → repo path.`);
+  return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
+}
+
+async function triggerRefresh() {
+  const { owner, repo, pat } = getSettings();
+  if (!pat) { toast('Add a GitHub PAT in Settings to use Refresh Data', 'error'); return; }
+  const btn = document.getElementById('refresh-btn');
+  btn.textContent = '⟳ Syncing…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+      body: JSON.stringify({ ref: 'main' })
+    });
+    (res.ok || res.status === 204)
+      ? toast('Sync triggered — data will refresh in ~2 min', 'success')
+      : toast('Sync failed. Check your PAT in Settings.', 'error');
+  } catch(e) {
+    toast('Network error — could not trigger sync', 'error');
+  } finally {
+    btn.textContent = '↻ Refresh Data';
+    btn.disabled = false;
+  }
+}
+
+// ──────────────────────────────────────────────
+// UI
+// ──────────────────────────────────────────────
+let selectedClient = null;
+
+function renderGrids() {
+  ['general','project','location'].forEach(struct => {
+    const grid = document.getElementById(`grid-${struct}`);
+    grid.innerHTML = CLIENTS.filter(c => c.structure === struct).map(c => `
+      <div class="client-card" id="cc-${c.key}" onclick="pickClient('${c.key}')">
+        <div class="client-name">${c.name}</div>
+        <span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span>
+      </div>
+    `).join('');
+  });
+}
+
+function pickClient(key) {
+  selectedClient = CLIENTS.find(c => c.key === key);
+  document.querySelectorAll('.client-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`cc-${key}`)?.classList.add('selected');
+  setTimeout(() => goTo(2), 180);
+}
+
+function goTo(n) {
+  [1,2,3].forEach(i => document.getElementById(`step-${i}`).style.display = 'none');
+  document.getElementById(`step-${n}`).style.display = '';
+  if (n === 2 && selectedClient) {
+    const s = STRUCT[selectedClient.structure];
+    document.getElementById('banner-name').textContent   = selectedClient.name;
+    document.getElementById('banner-struct').textContent = `${s.label} — Shown by ${s.groupLabel}`;
+    document.getElementById('cd-entity-lbl').textContent = s.groupLabel + ' List';
+    if (!document.getElementById('g-date').value) {
+      document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
+    }
+    updateGenBtn();
+  }
+}
+
+function toggleReport(id) {
+  document.getElementById(`rc-${id}`).classList.toggle('on');
+  updateGenBtn();
+}
+
+function updateGenBtn() {
+  const any = ['cs','cd','es','ed'].some(id => document.getElementById(`rc-${id}`)?.classList.contains('on'));
+  document.getElementById('gen-btn').disabled = !any;
+}
+
+function setProgress(lbl, sub) {
+  document.getElementById('prog-lbl').textContent = lbl;
+  document.getElementById('prog-sub').textContent = sub;
+}
+
+// ──────────────────────────────────────────────
+// GENERATE
+// ──────────────────────────────────────────────
+async function generate() {
+  const s = getSettings();
+  goTo(3);
+  document.getElementById('gen-area').style.display  = 'block';
+  document.getElementById('done-area').style.display = 'none';
+  document.getElementById('err-area').style.display  = 'none';
+  document.getElementById('s3-title').textContent    = 'Generating Reports…';
+  document.getElementById('s3-sub').textContent      = 'Please wait while your reports are built';
+
+  const on = id => document.getElementById(`rc-${id}`)?.classList.contains('on');
+  const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
+
+  try {
+    let insureds = [], requirements = [], notifications = [];
+
+    if (E.cs || E.cd || E.ed) {
+      setProgress('Fetching compliance data…', `Loading ${s.insuredsPath}`);
+      insureds = (await fetchCSV(s.insuredsPath)).filter(r => r[C.client] === selectedClient.key);
+    }
+
+    if (E.cd) {
+      setProgress('Fetching coverage data…', `Loading ${s.requirementsPath}`);
+      try {
+        requirements = (await fetchCSV(s.requirementsPath)).filter(r => r[C.client] === selectedClient.key);
+      } catch(e) { console.warn('requirements CSV skip:', e.message); }
+    }
+
+    if (E.es || E.ed) {
+      setProgress('Fetching engagement data…', `Loading ${s.notificationsPath}`);
+      try {
+        notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key);
+      } catch(e) { console.warn('notifications CSV skip:', e.message); }
+    }
+
+    const reportDate   = document.getElementById('g-date').value || today();
+    const statusFilter = document.getElementById('cd-status').value;
+    const engWindow    = parseInt(document.getElementById('ed-window').value) || 60;
+    const downloads    = [];
+
+    if (E.cd) {
+      setProgress('Building Compliance Detail…', 'Generating Excel workbook');
+      const wb   = buildComplianceDetailXL(insureds, requirements, { statusFilter, reportDate });
+      downloads.push({ label:'Compliance Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Compliance Detail.xlsx` });
+    }
+
+    if (E.ed) {
+      setProgress('Building Engagement Detail…', 'Generating Excel workbook');
+      const wb   = buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
+      downloads.push({ label:'Engagement Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Engagement Detail.xlsx` });
+    }
+
+    if (E.cs) {
+      setProgress('Building Compliance Summary…', 'Generating PDF');
+      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, { reportDate }), filename:`${selectedClient.name} — Compliance Summary.pdf` });
+    }
+
+    if (E.es) {
+      setProgress('Building Engagement Summary…', 'Generating PDF');
+      downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate }), filename:`${selectedClient.name} — Engagement Summary.pdf` });
+    }
+
+    showDownloads(downloads);
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('gen-area').style.display = 'none';
+    document.getElementById('err-area').style.display = 'block';
+    document.getElementById('err-msg').textContent     = e.message || 'Unexpected error';
+    document.getElementById('s3-title').textContent    = 'Generation Failed';
+  }
+}
+
+function showDownloads(downloads) {
+  document.getElementById('gen-area').style.display  = 'none';
+  document.getElementById('done-area').style.display = 'block';
+  document.getElementById('s3-title').textContent    = 'Reports Ready';
+  document.getElementById('s3-sub').textContent      = `${downloads.length} report${downloads.length!==1?'s':''} generated`;
+  window._dl = downloads;
+  document.getElementById('dl-grid').innerHTML = downloads.map((d,i) => `
+    <div class="dl-card">
+      <div class="dl-icon">${d.type==='excel'?'📊':'📄'}</div>
+      <div class="dl-name">${d.label}</div>
+      <button class="btn btn-primary" style="width:100%" onclick="dlFile(${i})">
+        ⬇ Download ${d.type==='excel'?'Excel':'PDF'}
+      </button>
+    </div>
+  `).join('');
+}
+
+function dlFile(i) {
+  const d = window._dl[i];
+  if (d.type === 'excel') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(d.blob);
+    a.download = d.filename;
+    a.click();
+  } else {
+    const w = window.open('', '_blank');
+    w.document.write(d.html);
+    w.document.close();
+    w.onload = () => { w.focus(); w.print(); };
+  }
+}
+
+// ──────────────────────────────────────────────
+// EXCEL BUILDERS
+// ──────────────────────────────────────────────
+function xlBlob(wb) {
+  const out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  return new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+function addSheet(wb, data, name, colWidths) {
+  if (!data.length) return;
+  const ws = XLSX.utils.json_to_sheet(data);
+  if (colWidths) ws['!cols'] = colWidths.map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, name);
+}
+
+function buildComplianceDetailXL(insureds, requirements, { statusFilter, reportDate }) {
+  const wb    = XLSX.utils.book_new();
+  const sl    = STRUCT[selectedClient.structure];
+  const total = insureds.length;
+  const comp  = insureds.filter(r => normStatus(r[C.status]) === 'compliant').length;
+  const nc    = insureds.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+  const newp  = insureds.filter(r => normStatus(r[C.status]) === 'pending').length;
+  const coi   = insureds.filter(r => isTruthy(r[C.has_coi])).length;
+
+  // Summary sheet
+  const summaryAOA = [
+    [`${selectedClient.name} — Compliance Detail`],
+    [selectedClient.name],
+    [`API Retrieval Date: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
+    [],
+    ['Metric','Count','% of Active'],
+    ['Active Third-Parties', total, '100%'],
+    ['Compliant',    comp, pct(comp, total)],
+    ['Non-Compliant', nc,  pct(nc,   total)],
+    ['New / Pending', newp,pct(newp,  total)],
+    [],
+    ['COI on File',    coi,       pct(coi,       total)],
+    ['No COI on File', total-coi, pct(total-coi, total)],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
+  wsSummary['!cols'] = [{wch:35},{wch:10},{wch:13}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  // Entity list sheet
+  if (document.getElementById('cd-entitylist').checked) {
+    const gCol = sl.groupCol;
+    let rows = statusFilter !== 'all' ? insureds.filter(r => normStatus(r[C.status]) === statusFilter) : insureds;
+    addSheet(wb, rows.map(r => ({
+      'Entity Name':         r[C.entity_name]   || '',
+      'Contract Number':     r[C.contract_num]  || '',
+      [sl.groupLabel]:       r[gCol]            || '',
+      'Compliance Status':   fmtStatus(r[C.status]),
+      'Verification Status': r[C.verify_status] || '',
+      'Next Expiration':     r[C.next_exp]      || '',
+      'Notification Email':  r[C.email]         || '',
+    })), `${sl.groupLabel} List`, [35,18,28,18,22,16,30]);
+  }
+
+  // Expiring coverage
+  if (document.getElementById('cd-expiring').checked && requirements.length) {
+    const rows = requirements
+      .filter(r => r[C.exp_date] && Number(r[C.days_until]) < 90)
+      .sort((a,b) => (Number(a[C.days_until])||999) - (Number(b[C.days_until])||999));
+    addSheet(wb, rows.map(r => ({
+      'Entity Name':    r[C.entity_name]  || '',
+      'Contract Number':r[C.contract_num] || '',
+      'Coverage Type':  r[C.coverage_type]|| '',
+      'Expiration Date':r[C.exp_date]     || '',
+      'Days Until':     r[C.days_until]   || '',
+      'Status':         fmtStatus(r[C.status]),
+    })), 'Expiring Coverage', [35,18,30,16,12,16]);
+  }
+
+  // NC by Coverage
+  if (document.getElementById('cd-nccoverage').checked && requirements.length) {
+    const map = {};
+    requirements.filter(r => normStatus(r[C.status]) === 'non_compliant')
+      .forEach(r => { const t = r[C.coverage_type]||'Unknown'; map[t] = (map[t]||0)+1; });
+    addSheet(wb, Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([ct,n]) => ({
+      'Coverage Type': ct, 'Non-Compliant Entities': n, '% of Active': pct(n, total)
+    })), 'NC by Coverage & Criteria', [35,22,14]);
+  }
+
+  // NC Reasons
+  if (document.getElementById('cd-ncreasons').checked && requirements.length) {
+    addSheet(wb, requirements
+      .filter(r => normStatus(r[C.status]) === 'non_compliant' && r[C.nc_reason])
+      .map(r => ({
+        'Entity Name':          r[C.entity_name]   || '',
+        'Contract Number':      r[C.contract_num]  || '',
+        'Compliance Status':    fmtStatus(r[C.status]),
+        'Coverage Type':        r[C.coverage_type] || '',
+        'Non-Compliant Reason': r[C.nc_reason]     || '',
+      })), 'Non-Compliance Reasons', [35,18,18,30,80]);
+  }
+
+  return wb;
+}
+
+function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate }) {
+  const wb     = XLSX.utils.book_new();
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - engWindow);
+  const uniqEmails  = new Set(notifications.map(n => n[C.notif_email]).filter(Boolean));
+  const totalSent   = uniqEmails.size;
+  const openedCount = new Set(notifications.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).size;
+  const clickedCount= new Set(notifications.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).size;
+  const issueCount  = new Set(notifications.filter(n => n[C.issue_type]).map(n => n[C.notif_email])).size;
+  const noCOI       = insureds.filter(r => !isTruthy(r[C.has_coi])).length;
+
+  const summaryAOA = [
+    [`${selectedClient.name} — Engagement Detail`],
+    [selectedClient.name],
+    [`API Retrieval Date: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
+    [`Data Range: Last ${engWindow} Days`],
+    [],
+    ['Metric','Count'],
+    ['Emails Sent (Unique)', totalSent],
+    ['Opened',  openedCount],
+    ['Clicked', clickedCount],
+    ['Delivery Issues', issueCount],
+    [],
+    ['No COI on File', noCOI],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
+  wsSummary['!cols'] = [{wch:30},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const eRow = r => ({
+    'Entity Name':         r[C.entity_name]   || '',
+    'Contract Number':     r[C.contract_num]  || '',
+    'Compliance Status':   fmtStatus(r[C.status]),
+    'Verification Status': r[C.verify_status] || '',
+    'Notification Email':  r[C.email]         || '',
+    'Next Expiration':     r[C.next_exp]      || '',
+  });
+  const eCols = [35,18,18,22,30,16];
+
+  if (document.getElementById('ed-nocoi').checked)
+    addSheet(wb, insureds.filter(r => !isTruthy(r[C.has_coi])).map(eRow), 'No COIs on File', eCols);
+
+  if (document.getElementById('ed-noeng').checked) {
+    const engaged = new Set(notifications.map(n => n[C.notif_email]).filter(Boolean));
+    addSheet(wb, insureds.filter(r => { const em = r[C.email]; return !em || !engaged.has(em); }).map(eRow),
+      'No Engagement Since Go-Live', eCols);
+  }
+
+  if (document.getElementById('ed-ncnoeng').checked) {
+    const recent = new Set(notifications.filter(n => n[C.sent_at] && new Date(n[C.sent_at]) >= cutoff).map(n => n[C.notif_email]).filter(Boolean));
+    addSheet(wb, insureds.filter(r => {
+      return normStatus(r[C.status]) === 'non_compliant' && (!r[C.email] || !recent.has(r[C.email]));
+    }).map(eRow), `NC + No ${engWindow}-Day Engagement`, eCols);
+  }
+
+  if (document.getElementById('ed-undel').checked) {
+    addSheet(wb, notifications.filter(n => n[C.issue_type]).map(n => ({
+      'Email':           n[C.notif_email]  || '',
+      'Contract Number': n[C.contract_num] || '',
+      'Issue Type':      n[C.issue_type]   || '',
+      'Date':            n[C.sent_at]      || '',
+      'Subject':         n[C.subject]      || '',
+    })), 'Undeliverable Emails', [40,18,16,24,60]);
+  }
+
+  return wb;
+}
+
+// ──────────────────────────────────────────────
+// PDF HTML BUILDERS
+// Both PDFs open in a new tab → browser Print dialog
+// ──────────────────────────────────────────────
+const PDF_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Outfit',sans-serif;background:white;color:#1E2E3D;font-size:12px}
+  .page{max-width:820px;margin:0 auto;padding:20px 24px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+  .hdr-right{text-align:right}
+  .badge{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5A6B7B;margin-bottom:4px}
+  .client-name{font-size:20px;font-weight:700;color:#1E2E3D}
+  .rpt-date{font-size:11px;color:#5A6B7B}
+  .sec-hdr{border-left:3px solid #3872B8;padding-left:10px;margin:18px 0 12px}
+  .sec-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1E2E3D}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .kpi{border:1px solid #D1DCE8;border-radius:8px;padding:13px 15px}
+  .kpi-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6B7B;margin-bottom:6px}
+  .kpi-val{font-size:26px;font-weight:700;line-height:1}
+  .kpi-sub{font-size:10px;margin-top:4px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .bcard{border:1px solid #D1DCE8;border-radius:8px;padding:15px}
+  .bcard-title{font-size:12px;font-weight:600;color:#1E2E3D;margin-bottom:12px}
+  .brow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:11px}
+  .brow:last-child{border-bottom:none}
+  .dot{width:9px;height:9px;border-radius:50%;margin-right:7px;flex-shrink:0;display:inline-block}
+  .blbl{display:flex;align-items:center;color:#5A6B7B}
+  .bval{font-weight:600;color:#1E2E3D}
+  .exp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .exp-card{text-align:center;border:1px solid #D1DCE8;border-radius:6px;padding:10px}
+  .exp-days{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5A6B7B;margin-bottom:4px}
+  .exp-val{font-size:24px;font-weight:700;line-height:1}
+  .exp-lbl{font-size:10px;color:#5A6B7B;margin-top:2px}
+  .stbl{width:100%;border-collapse:collapse}
+  .stbl td{padding:6px 8px;border-bottom:1px solid #F1F5F9;font-size:11px}
+  .stbl td:last-child{text-align:right;font-weight:600}
+  .bar{width:100%;height:4px;background:#E2E8F0;border-radius:2px;margin-top:3px}
+  .bar-fill{height:100%;border-radius:2px}
+  .itbl{width:100%;border-collapse:collapse}
+  .itbl th{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5A6B7B;padding:5px 7px;text-align:left;border-bottom:1px solid #D1DCE8}
+  .itbl td{padding:6px 7px;border-bottom:1px solid #F1F5F9;font-size:11px}
+  .crit{background:#FEE2E2;color:#991B1B;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:600}
+  .warn{background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:600}
+  .frow{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:11px;gap:8px}
+  .frow:last-child{border-bottom:none}
+  .flbl{font-weight:700;width:70px;flex-shrink:0}
+  .fbar{flex:1;height:9px;border-radius:3px}
+  .fcount{font-size:18px;font-weight:700;width:40px;text-align:right}
+  .fpct{width:36px;text-align:right;color:#5A6B7B;font-size:11px}
+  .footer{margin-top:22px;padding-top:10px;border-top:1px solid #D1DCE8;display:flex;justify-content:space-between;font-size:9px;color:#94A3B8}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+`;
+
+function logoHTML() {
+  return `<div style="font-size:18px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:2px 7px;border-radius:4px">SECURE</span></div>
+          <div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:3px">SERVICED BY HUB</div>`;
+}
+
+function buildComplianceSummaryHTML(insureds, { reportDate }) {
+  const total = insureds.length;
+  const comp  = cnt(insureds, r => normStatus(r[C.status]) === 'compliant');
+  const nc    = cnt(insureds, r => normStatus(r[C.status]) === 'non_compliant');
+  const newp  = cnt(insureds, r => normStatus(r[C.status]) === 'pending');
+  const coi   = cnt(insureds, r => isTruthy(r[C.has_coi]));
+  const noCOI = total - coi;
+  const noCOI_NC   = cnt(insureds, r => !isTruthy(r[C.has_coi]) && normStatus(r[C.status]) === 'non_compliant');
+  const noCOI_New  = cnt(insureds, r => !isTruthy(r[C.has_coi]) && normStatus(r[C.status]) === 'pending');
+  const noCOI_Comp = noCOI - noCOI_NC - noCOI_New;
+  const exp7  = cnt(insureds, r => expiringSoon(r[C.next_exp], 7));
+  const exp30 = cnt(insureds, r => expiringSoon(r[C.next_exp], 30));
+  const exp60 = cnt(insureds, r => expiringSoon(r[C.next_exp], 60));
+  const exp90 = cnt(insureds, r => expiringSoon(r[C.next_exp], 90));
+  const fd    = fmtDate(reportDate);
+
+  const showKPI      = chk('cs-kpi');
+  const showBreakdown= chk('cs-breakdown');
+  const showCOI      = chk('cs-coi');
+  const showNoCOI    = chk('cs-nocoi');
+  const showExpiring = chk('cs-expiring');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Compliance Summary</title><style>${PDF_STYLES}</style></head><body><div class="page">
+  <div class="hdr">
+    <div>${logoHTML()}</div>
+    <div class="hdr-right"><div class="badge">Compliance Summary</div><div class="client-name">${esc(selectedClient.name)}</div><div class="rpt-date">Report Date: ${fd}</div></div>
+  </div>
+  ${showKPI ? `
+  <div class="sec-hdr"><div class="sec-title">Program Compliance Summary</div></div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Active Third-Parties</div><div class="kpi-val">${total.toLocaleString()}</div><div class="kpi-sub" style="color:#3872B8">Total program scope</div></div>
+    <div class="kpi"><div class="kpi-lbl">Compliant</div><div class="kpi-val" style="color:#16A34A">${comp.toLocaleString()}</div><div class="kpi-sub" style="color:#16A34A">${pct(comp,total)} of active</div></div>
+    <div class="kpi"><div class="kpi-lbl">Non-Compliant</div><div class="kpi-val" style="color:#DC2626">${nc.toLocaleString()}</div><div class="kpi-sub" style="color:#DC2626">${pct(nc,total)} of active</div></div>
+    <div class="kpi"><div class="kpi-lbl">New</div><div class="kpi-val" style="color:#EA580C">${newp.toLocaleString()}</div><div class="kpi-sub" style="color:#EA580C">${pct(newp,total)} of active</div></div>
+  </div>` : ''}
+  ${(showBreakdown||showCOI) ? `
+  <div class="sec-hdr"><div class="sec-title">Compliance Breakdown</div></div>
+  <div class="two-col">
+    ${showBreakdown ? `<div class="bcard"><div class="bcard-title">Compliance Status</div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#16A34A"></span>Compliant</div><div class="bval">${comp.toLocaleString()} (${pct(comp,total)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>Non-Compliant</div><div class="bval">${nc.toLocaleString()} (${pct(nc,total)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#EA580C"></span>New</div><div class="bval">${newp.toLocaleString()} (${pct(newp,total)})</div></div>
+    </div>` : '<div></div>'}
+    ${showCOI ? `<div class="bcard"><div class="bcard-title">COI Submission Status</div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#3872B8"></span>COI on File</div><div class="bval">${coi.toLocaleString()} (${pct(coi,total)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>No COI on File</div><div class="bval">${noCOI.toLocaleString()} (${pct(noCOI,total)})</div></div>
+    </div>` : '<div></div>'}
+  </div>` : ''}
+  ${(showNoCOI||showExpiring) ? `
+  <div class="sec-hdr"><div class="sec-title">Additional Program Data</div></div>
+  <div class="two-col">
+    ${showNoCOI ? `<div class="bcard"><div class="bcard-title">No COI on File — Breakdown</div>
+      <div class="brow"><div class="blbl">Non-Compliant</div><div class="bval">${noCOI_NC.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
+      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_NC,noCOI)}%;background:#DC2626"></div></div>
+      <div class="brow" style="margin-top:6px"><div class="blbl">Pending / New</div><div class="bval">${noCOI_New.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
+      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_New,noCOI)}%;background:#EA580C"></div></div>
+      <div class="brow" style="margin-top:6px"><div class="blbl">Compliant (no COI record)</div><div class="bval">${noCOI_Comp.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
+      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_Comp,noCOI)}%;background:#16A34A"></div></div>
+    </div>` : '<div></div>'}
+    ${showExpiring ? `<div class="bcard"><div class="bcard-title">Expiring Coverage</div>
+      <div class="exp-grid">
+        <div class="exp-card"><div class="exp-days">7 Days</div><div class="exp-val">${exp7}</div><div class="exp-lbl">entities</div></div>
+        <div class="exp-card"><div class="exp-days">30 Days</div><div class="exp-val" style="color:#EA580C">${exp30}</div><div class="exp-lbl">entities</div></div>
+        <div class="exp-card"><div class="exp-days">60 Days</div><div class="exp-val">${exp60}</div><div class="exp-lbl">entities</div></div>
+        <div class="exp-card"><div class="exp-days">90 Days</div><div class="exp-val">${exp90}</div><div class="exp-lbl">entities</div></div>
+      </div>
+      <table class="stbl">
+        <tr><td>Total Compliant Entities</td><td>${comp}</td></tr>
+        <tr><td>Expiring within 30 days</td><td>${exp30} (${pct(exp30,comp)})</td></tr>
+        <tr><td>Expiring within 60 days</td><td>${exp60} (${pct(exp60,comp)})</td></tr>
+        <tr><td>Expiring within 90 days</td><td>${exp90} (${pct(exp90,comp)})</td></tr>
+      </table>
+    </div>` : '<div></div>'}
+  </div>` : ''}
+  <div class="footer">
+    <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel.</span>
+    <span>HUB CertSecure — Serviced by HUB International | ${esc(selectedClient.name)} | Compliance Summary | ${fd}</span>
+  </div>
+</div></body></html>`;
+}
+
+function buildEngagementSummaryHTML(notifications, { reportDate }) {
+  const fd = fmtDate(reportDate);
+  const cutoff60 = new Date(); cutoff60.setDate(cutoff60.getDate() - 60);
+  const uniq  = arr => [...new Set(arr.filter(Boolean))];
+
+  const allEmails   = uniq(notifications.map(n => n[C.notif_email]));
+  const totalSent   = allEmails.length;
+  const opened      = uniq(notifications.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).length;
+  const clicked     = uniq(notifications.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).length;
+  const issues      = uniq(notifications.filter(n => n[C.issue_type]).map(n => n[C.notif_email])).length;
+  const noIssue     = totalSent - issues;
+  const notOpened   = totalSent - opened;
+
+  // Issue breakdown
+  const iMap = {};
+  notifications.filter(n => n[C.issue_type]).forEach(n => {
+    const t = n[C.issue_type]; if (!iMap[t]) iMap[t] = new Set(); iMap[t].add(n[C.notif_email]);
+  });
+  const SEV = { 'Hard Bounce':'crit','hard_bounce':'crit','Rejected':'crit','rejected':'crit' };
+
+  // 60-day
+  const n60    = notifications.filter(n => n[C.sent_at] && new Date(n[C.sent_at]) >= cutoff60);
+  const sent60 = uniq(n60.map(n => n[C.notif_email])).length;
+  const open60 = uniq(n60.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).length;
+  const clk60  = uniq(n60.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).length;
+
+  const showKPI     = chk('es-kpi');
+  const showOpen    = chk('es-openrate');
+  const showDel     = chk('es-delivery');
+  const showIssues  = chk('es-issues');
+  const show60      = chk('es-60day');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Engagement Summary</title><style>${PDF_STYLES}</style></head><body><div class="page">
+  <div class="hdr">
+    <div>${logoHTML()}</div>
+    <div class="hdr-right"><div class="badge">Engagement Summary</div><div class="client-name">${esc(selectedClient.name)}</div><div class="rpt-date">Report Date: ${fd}</div></div>
+  </div>
+  ${showKPI ? `
+  <div class="sec-hdr"><div class="sec-title">Email Engagement Summary</div></div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Emails Sent</div><div class="kpi-val">${totalSent.toLocaleString()}</div><div class="kpi-sub" style="color:#3872B8">Unique addresses</div></div>
+    <div class="kpi"><div class="kpi-lbl">Opened</div><div class="kpi-val" style="color:#16A34A">${opened.toLocaleString()}</div><div class="kpi-sub" style="color:#16A34A">${pct(opened,totalSent)} open rate</div></div>
+    <div class="kpi"><div class="kpi-lbl">Clicked</div><div class="kpi-val">${clicked.toLocaleString()}</div><div class="kpi-sub" style="color:#3872B8">${pct(clicked,totalSent)} click rate</div></div>
+    <div class="kpi"><div class="kpi-lbl">Delivery Issues</div><div class="kpi-val" style="color:#DC2626">${issues.toLocaleString()}</div><div class="kpi-sub" style="color:#DC2626">${pct(issues,totalSent)} of sent</div></div>
+  </div>` : ''}
+  ${(showOpen||showDel) ? `
+  <div class="sec-hdr"><div class="sec-title">Engagement Breakdown</div></div>
+  <div class="two-col">
+    ${showOpen ? `<div class="bcard"><div class="bcard-title">Open Rate</div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#16A34A"></span>Opened</div><div class="bval">${opened.toLocaleString()} (${pct(opened,totalSent)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#E2E8F0"></span>Not Opened</div><div class="bval">${notOpened.toLocaleString()} (${pct(notOpened,totalSent)})</div></div>
+    </div>` : '<div></div>'}
+    ${showDel ? `<div class="bcard"><div class="bcard-title">Deliverability</div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#3872B8"></span>No Issues</div><div class="bval">${noIssue.toLocaleString()} (${pct(noIssue,totalSent)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>Issues Detected</div><div class="bval">${issues.toLocaleString()} (${pct(issues,totalSent)})</div></div>
+    </div>` : '<div></div>'}
+  </div>` : ''}
+  ${(showIssues||show60) ? `
+  <div class="sec-hdr"><div class="sec-title">Additional Engagement Data</div></div>
+  <div class="two-col">
+    ${showIssues ? `<div class="bcard"><div class="bcard-title">Delivery Issue Breakdown</div>
+      <p style="font-size:10px;color:#5A6B7B;margin-bottom:10px">${issues} unique addresses encountered delivery issues.</p>
+      <table class="itbl"><thead><tr><th>Issue Type</th><th>Description</th><th>Count</th><th>Severity</th></tr></thead><tbody>
+        ${Object.entries(iMap).map(([t,s]) => {
+          const isCrit = SEV[t]==='crit';
+          const desc = /hard.bounce/i.test(t)?'Address does not exist':/reject/i.test(t)?'Server rejected message':/soft.bounce/i.test(t)?'Temporary failure':'Delivery delayed';
+          return `<tr><td style="font-weight:600">${esc(t)}</td><td style="color:#5A6B7B">${desc}</td><td style="font-weight:700">${s.size}</td><td><span class="${isCrit?'crit':'warn'}">${isCrit?'Critical':'Warning'}</span></td></tr>`;
+        }).join('')}
+      </tbody></table>
+    </div>` : '<div></div>'}
+    ${show60 ? `<div class="bcard"><div class="bcard-title">60-Day Activity Window</div>
+      <p style="font-size:10px;color:#5A6B7B;margin-bottom:12px">Most recent 60-day engagement window.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="text-align:center;border:1px solid #D1DCE8;border-radius:6px;padding:10px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5A6B7B">Sent</div><div style="font-size:20px;font-weight:700;color:#3872B8;margin-top:3px">${sent60}</div><div style="font-size:10px;color:#5A6B7B">unique</div></div>
+        <div style="text-align:center;border:1px solid #D1DCE8;border-radius:6px;padding:10px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5A6B7B">Opened</div><div style="font-size:20px;font-weight:700;color:#16A34A;margin-top:3px">${open60}</div><div style="font-size:10px;color:#5A6B7B">unique</div></div>
+        <div style="text-align:center;border:1px solid #D1DCE8;border-radius:6px;padding:10px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5A6B7B">Clicked</div><div style="font-size:20px;font-weight:700;color:#1E2E3D;margin-top:3px">${clk60}</div><div style="font-size:10px;color:#5A6B7B">unique</div></div>
+      </div>
+      <div style="border:1px solid #D1DCE8;border-radius:6px;padding:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5A6B7B;margin-bottom:8px">Engagement Funnel</div>
+        <div class="frow"><div class="flbl">SENT</div><div class="fbar" style="background:#3872B8"></div><div class="fcount" style="color:#3872B8">${sent60}</div><div class="fpct">100%</div></div>
+        <div class="frow"><div class="flbl">OPENED</div><div class="fbar" style="background:#16A34A;width:${barPct(open60,sent60)}%"></div><div class="fcount" style="color:#16A34A">${open60}</div><div class="fpct">${pct(open60,sent60)}</div></div>
+        <div class="frow"><div class="flbl">CLICKED</div><div class="fbar" style="background:#1E2E3D;width:${barPct(clk60,sent60)}%"></div><div class="fcount" style="color:#1E2E3D">${clk60}</div><div class="fpct">${pct(clk60,sent60)}</div></div>
+      </div>
+    </div>` : '<div></div>'}
+  </div>` : ''}
+  <div class="footer">
+    <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel.</span>
+    <span>HUB CertSecure — Serviced by HUB International | ${esc(selectedClient.name)} | Engagement Summary | ${fd}</span>
+  </div>
+</div></body></html>`;
+}
+
+// ──────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────
+function normStatus(s) {
+  if (!s) return 'unknown';
+  const l = s.toLowerCase().replace(/[\s-]/g,'_');
+  if (l==='compliant') return 'compliant';
+  if (l.includes('non_compliant')||l==='noncompliant') return 'non_compliant';
+  if (l==='pending'||l==='new') return 'pending';
+  return l;
+}
+function fmtStatus(s) {
+  const n = normStatus(s);
+  if (n==='compliant') return 'Compliant';
+  if (n==='non_compliant') return 'Non-Compliant';
+  if (n==='pending') return 'New';
+  return s||'';
+}
+function isTruthy(v) {
+  if (!v) return false;
+  return ['true','1','yes'].includes(String(v).toLowerCase().trim());
+}
+function pct(n, d) { return d ? (Math.round(n/d*1000)/10).toFixed(1)+'%' : '0%'; }
+function barPct(n, d) { return d ? Math.min(100, Math.round(n/d*100)) : 0; }
+function cnt(arr, fn) { return arr.filter(fn).length; }
+function expiringSoon(ds, days) {
+  if (!ds) return false;
+  const d = new Date(ds); if (isNaN(d)) return false;
+  const diff = (d - new Date()) / 86400000;
+  return diff >= 0 && diff <= days;
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(s) {
+  if (!s) return new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  return new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+}
+function chk(id) { return document.getElementById(id)?.checked; }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${type}`;
+  setTimeout(() => t.className='toast', 3200);
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+renderGrids();
+</script>
+</body>
+</html>
