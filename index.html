@@ -1047,7 +1047,7 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
       row['Compliance Status']   = fmtStatus(r[C.status]);
       row['Verification Status'] = fmtVerif(r[C.verify_status]);
       row['Next Expiration']     = r[C.next_exp]  || '';
-      row['Notification Email']  = r._notificationList || r[C.email] || '';
+      row['Notification Email']  = fmtNotifList(r._notificationList) || r[C.email] || '';
       return row;
     }), `${groupLabel} List`, selectedClient.structure === 'project'
       ? [40,20,28,16,18,22,16,40]
@@ -1111,7 +1111,7 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
           'Compliance Status':    fmtStatus(r[C.overall_comp]),
           'Coverage Type':        covType,
           'Non-Compliance Reason':detail,
-          'Notification Email':   insured._notificationList || r[C.crit_email] || '',
+          'Notification Email':   fmtNotifList(insured._notificationList) || r[C.crit_email] || '',
         });
       });
     });
@@ -1162,7 +1162,7 @@ function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDat
     if (selectedClient.structure === 'project') row['Project Number'] = r._projectNumber || '';
     row['Compliance Status']   = fmtStatus(r[C.status]);
     row['Verification Status'] = fmtVerif(r[C.verify_status]);
-    row['Notification Email']  = r._notificationList || r[C.email] || '';
+    row['Notification Email']  = fmtNotifList(r._notificationList) || r[C.email] || '';
     row['Next Expiration']     = r[C.next_exp] || '';
     return row;
   };
@@ -1585,6 +1585,22 @@ function fmtStatus(s) {
   if (n==='non_compliant') return 'Non-Compliant';
   if (n==='pending') return 'New';
   return s||'';
+}
+function fmtNotifList(s) {
+  if (!s) return '';
+  const str = s.trim();
+  // Handle JSON array format: ["email1","email2"]
+  if (str.startsWith('[')) {
+    try {
+      const arr = JSON.parse(str);
+      if (Array.isArray(arr)) return arr.filter(Boolean).join(', ');
+    } catch(e) {
+      // Fallback: extract anything that looks like an email
+      const matches = str.match(/[\w.+%-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+      if (matches) return matches.join(', ');
+    }
+  }
+  return str;
 }
 function fmtVerif(s) {
   if (!s) return '';
