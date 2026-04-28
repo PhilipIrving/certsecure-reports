@@ -1057,6 +1057,15 @@ function enrichInsureds(insureds, customProps) {
 // ──────────────────────────────────────────────
 // EXCEL STYLE HELPERS — ExcelJS, exact CPKC standard
 // ──────────────────────────────────────────────
+function shortName(n) {
+  if (n.includes('Kansas City'))      return 'CPKC';
+  if (n.includes('Capital Railroad')) return 'CRC';
+  if (n.includes('Musselman'))        return 'M&H';
+  if (n.includes('Skyline'))          return 'Skyline';
+  if (n.includes('Scandroli'))        return 'Scandroli';
+  if (n.includes('Abbey'))            return 'Abbey';
+  return n.split(' ')[0];
+}
 // All colors in ARGB (FF = fully opaque)
 const XL = {
   NAVY:'FF2B3A52', BLUE:'FF3A7FC1', WHITE:'FFFFFFFF',
