@@ -372,6 +372,11 @@
       <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
     </div>
     <div class="form-grp">
+      <label class="form-lbl">Custom Properties CSV</label>
+      <input type="text" id="s-customprops" placeholder="data/custom_properties.csv">
+      <div class="form-hint">Contract numbers, entity types, notification lists per insured</div>
+    </div>
+    <div class="form-grp">
       <label class="form-lbl">Engagement CSV</label>
       <input type="text" id="s-notifications" placeholder="data/engagement.csv">
       <div class="form-hint">Email event data — used for all Engagement reports</div>
@@ -672,6 +677,7 @@ const DEFAULTS = {
   insuredsPath:     'data/insureds.csv',
   coveragesPath:    'data/coverages.csv',
   criteriaPath:     'data/criteria.csv',
+  customPropsPath:  'data/custom_properties.csv',
   notificationsPath:'data/engagement.csv',
 };
 
@@ -688,6 +694,7 @@ function openSettings() {
   document.getElementById('s-insureds').value    = s.insuredsPath;
   document.getElementById('s-coverages').value   = s.coveragesPath;
   document.getElementById('s-criteria').value    = s.criteriaPath;
+  document.getElementById('s-customprops').value = s.customPropsPath;
   document.getElementById('s-notifications').value = s.notificationsPath;
   document.getElementById('settings-overlay').classList.add('open');
 }
@@ -705,6 +712,7 @@ function saveSettings() {
     insuredsPath:     document.getElementById('s-insureds').value.trim(),
     coveragesPath:    document.getElementById('s-coverages').value.trim(),
     criteriaPath:     document.getElementById('s-criteria').value.trim(),
+    customPropsPath:  document.getElementById('s-customprops').value.trim(),
     notificationsPath:document.getElementById('s-notifications').value.trim(),
   }));
   closeSettings();
@@ -820,11 +828,18 @@ async function generate() {
   const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
 
   try {
-    let insureds = [], coverages = [], criteria = [], notifications = [];
+    let insureds = [], coverages = [], criteria = [], customProps = [], notifications = [];
 
     if (E.cs || E.cd || E.ed) {
       setProgress('Fetching compliance data…', `Loading ${s.insuredsPath}`);
       insureds = (await fetchCSV(s.insuredsPath)).filter(r => r[C.client] === selectedClient.key);
+
+      setProgress('Fetching custom properties…', `Loading ${s.customPropsPath}`);
+      try {
+        const allProps = await fetchCSV(s.customPropsPath);
+        customProps = allProps.filter(r => r['client'] === selectedClient.key);
+        insureds = enrichInsureds(insureds, customProps);
+      } catch(e) { console.warn('custom_properties CSV skip:', e.message); }
     }
 
     if (E.cd) {
@@ -914,6 +929,45 @@ function dlFile(i) {
 }
 
 // ──────────────────────────────────────────────
+// ENRICH INSUREDS with custom properties
+// Builds lookup maps from custom_properties.csv
+// matching on primary_contact_email (lowercased)
+// ──────────────────────────────────────────────
+function enrichInsureds(insureds, customProps) {
+  const contractMap     = {};
+  const entityTypeMap   = {};
+  const notifListMap    = {};
+
+  for (const row of customProps) {
+    const key = (row['contact_email'] || row['insured_name'] || '').trim().toLowerCase();
+    if (!key || key === 'nan') continue;
+    const fn = (row['field_name'] || row['field_label'] || '').trim();
+    const fv = (row['field_value'] || '').trim();
+    if (!fv || fv === 'nan') continue;
+
+    if (fn === 'contractNumber' && !(key in contractMap))
+      contractMap[key] = fv;
+    if (fn === 'entityType' && !(key in entityTypeMap))
+      entityTypeMap[key] = fv;
+    if (fn === 'notificationList' && !(key in notifListMap)) {
+      const lower = fv.toLowerCase();
+      if (!lower.includes('internalemail') && !lower.includes('paused'))
+        notifListMap[key] = fv;
+    }
+  }
+
+  return insureds.map(r => {
+    const key = (r[C.email] || '').trim().toLowerCase();
+    return {
+      ...r,
+      _contractNumber:   contractMap[key]   || '',
+      _entityType:       entityTypeMap[key]  || '',
+      _notificationList: notifListMap[key]   || '',
+    };
+  });
+}
+
+// ──────────────────────────────────────────────
 // EXCEL BUILDERS
 // ──────────────────────────────────────────────
 function xlBlob(wb) {
@@ -959,29 +1013,35 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
   if (document.getElementById('cd-entitylist').checked) {
     let rows = statusFilter !== 'all' ? active.filter(r => normStatus(r[C.status]) === statusFilter) : active;
     addSheet(wb, rows.map(r => ({
-      'Insured Name':        r[C.entity_name]   || '',
-      'Insured ID':          r[C.insured_id]    || '',
+      'Insured Name':        r[C.entity_name]        || '',
+      'Contract Number':     r._contractNumber        || '',
+      'Entity Type':         r._entityType            || '',
       'Compliance Status':   fmtStatus(r[C.status]),
-      'Verification Status': r[C.verify_status] || '',
-      'Next Expiration':     r[C.next_exp]      || '',
-      'Notification Email':  r[C.email]         || '',
-    })), 'Insured List', [40,36,18,22,16,36]);
+      'Verification Status': fmtVerif(r[C.verify_status]),
+      'Next Expiration':     r[C.next_exp]            || '',
+      'Notification Email':  r._notificationList || r[C.email] || '',
+    })), 'Entity List', [40,20,20,18,22,16,40]);
   }
 
   // Expiring coverage — calculate days from expiration_date
   if (document.getElementById('cd-expiring').checked && coverages.length) {
-    const today = new Date();
+    const insuredById = {};
+    active.forEach(r => { if (r[C.insured_id]) insuredById[r[C.insured_id]] = r; });
     const rows = coverages
       .map(r => ({ ...r, _days: daysUntilDate(r[C.exp_date]) }))
       .filter(r => r._days !== null && r._days >= 0 && r._days <= 90)
       .sort((a,b) => a._days - b._days);
-    addSheet(wb, rows.map(r => ({
-      'Insured Name':   r[C.entity_name]   || r['insured_name'] || '',
-      'Coverage Type':  fmtCoverage(r[C.coverage_type]),
-      'Expiration Date':r[C.exp_date]      || '',
-      'Days Until':     r._days,
-      'Insurer':        r['insurer']        || '',
-    })), 'Expiring Coverage', [40,32,16,12,40]);
+    addSheet(wb, rows.map(r => {
+      const ins = insuredById[r['insured_id']] || {};
+      return {
+        'Insured Name':    r['insured_name']         || '',
+        'Contract Number': ins._contractNumber        || '',
+        'Coverage Type':   fmtCoverage(r[C.coverage_type]),
+        'Expiration Date': r[C.exp_date]             || '',
+        'Days Until':      r._days,
+        'Insurer':         r['insurer']              || '',
+      };
+    }), 'Expiring Coverage', [40,20,32,16,12,40]);
   }
 
   // NC by Coverage — parse from criteria non_compliance_reasons field
@@ -1003,24 +1063,28 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
 
   // NC Reasons — from criteria.csv (separator is " | " with spaces)
   if (document.getElementById('cd-ncreasons').checked && criteria.length) {
+    // Build insured_id → enriched insured lookup for contract number
+    const insuredById = {};
+    active.forEach(r => { if (r[C.insured_id]) insuredById[r[C.insured_id]] = r; });
     const ncRows = [];
     criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant' && r[C.nc_reasons]).forEach(r => {
+      const insured = insuredById[r['insured_id']] || {};
       const reasons = (r[C.nc_reasons] || '').split(' | ').map(s => s.trim()).filter(Boolean);
       reasons.forEach(reason => {
         const colonIdx = reason.indexOf(':');
         const covType = colonIdx > 0 ? fmtCoverage(reason.slice(0, colonIdx).trim()) : '';
         const detail  = colonIdx > 0 ? reason.slice(colonIdx+1).trim() : reason;
         ncRows.push({
-          'Insured Name':         r[C.crit_name]  || '',
+          'Insured Name':         r[C.crit_name]              || '',
+          'Contract Number':      insured._contractNumber      || '',
           'Compliance Status':    fmtStatus(r[C.overall_comp]),
-          'Verification Status':  r['verification_status'] || '',
           'Coverage Type':        covType,
           'Non-Compliance Reason':detail,
-          'Notification Email':   r[C.crit_email] || '',
+          'Notification Email':   insured._notificationList || r[C.crit_email] || '',
         });
       });
     });
-    addSheet(wb, ncRows, 'Non-Compliance Reasons', [40,18,22,30,80,36]);
+    addSheet(wb, ncRows, 'Non-Compliance Reasons', [40,20,18,30,80,40]);
   }
 
   return wb;
@@ -1055,13 +1119,15 @@ function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDat
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   const eRow = r => ({
-    'Insured Name':        r[C.entity_name]   || '',
+    'Insured Name':        r[C.entity_name]        || '',
+    'Contract Number':     r._contractNumber        || '',
+    'Entity Type':         r._entityType            || '',
     'Compliance Status':   fmtStatus(r[C.status]),
-    'Verification Status': r[C.verify_status] || '',
-    'Notification Email':  r[C.email]         || '',
-    'Next Expiration':     r[C.next_exp]      || '',
+    'Verification Status': fmtVerif(r[C.verify_status]),
+    'Notification Email':  r._notificationList || r[C.email] || '',
+    'Next Expiration':     r[C.next_exp]            || '',
   });
-  const eCols = [40,18,22,36,16];
+  const eCols = [40,20,20,18,22,40,16];
 
   // No COI on File — insureds whose email has never sent anything
   if (document.getElementById('ed-nocoi').checked) {
@@ -1332,6 +1398,16 @@ function fmtStatus(s) {
   if (n==='non_compliant') return 'Non-Compliant';
   if (n==='pending') return 'New';
   return s||'';
+}
+function fmtVerif(s) {
+  if (!s) return '';
+  return {
+    'PENDING_INSURED_SUBMISSION': 'Pending Submission',
+    'COMPLETE':                   'Complete',
+    'NO_INSURED_RESPONSE':        'No Response',
+    'PROCESSING':                 'Processing',
+    'EXHAUSTED':                  'Exhausted',
+  }[s] || s;
 }
 function fmtCoverage(s) {
   // Convert SNAKE_CASE coverage type to Title Case
