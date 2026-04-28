@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CertSecure — Report Generator</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -323,7 +323,7 @@
   <div class="header-right">
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
-    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.01</span>
+    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.02</span>
   </div>
 </header>
 
@@ -470,7 +470,7 @@
               <option value="compliant">Compliant Only</option>
               <option value="pending">New / Pending Only</option>
             </select>
-            <div class="sec-div" id="cd-cf-hdr" style="display:none">Custom Fields</div>
+            <div class="sec-div" id="cd-cf-hdr" style="display:none">Custom Fields — <span style="font-weight:400;text-transform:none;letter-spacing:0">Select which to include as extra columns</span></div>
             <div class="cb-group" id="cd-cf-list"></div>
           </div>
         </div>
@@ -516,7 +516,7 @@
               <option value="30">Last 30 Days</option>
               <option value="90">Last 90 Days</option>
             </select>
-            <div class="sec-div" id="ed-cf-hdr" style="display:none">Custom Fields</div>
+            <div class="sec-div" id="ed-cf-hdr" style="display:none">Custom Fields — <span style="font-weight:400;text-transform:none;letter-spacing:0">Select which to include as extra columns</span></div>
             <div class="cb-group" id="ed-cf-list"></div>
           </div>
         </div>
@@ -958,7 +958,15 @@ function pickClient(key) {
   const safeKey = key.replace(/[^a-z0-9]/gi,'_');
   document.getElementById(`cc-${safeKey}`)?.classList.add('selected');
   updateCustomFieldsUI();
-  setTimeout(() => goTo(2), 180);
+  setTimeout(() => {
+    goTo(2);
+    // Auto-expand Compliance Detail and Engagement Detail so custom fields are visible
+    ['cd','ed'].forEach(id => {
+      const card = document.getElementById(`rc-${id}`);
+      if (card && !card.classList.contains('on')) card.classList.add('on');
+    });
+    updateGenBtn();
+  }, 180);
 }
 
 function updateCustomFieldsUI() {
@@ -1058,14 +1066,14 @@ async function generate() {
     const downloads    = [];
 
     if (E.cd) {
-      setProgress('Building Compliance Detail\u2026', 'Generating Excel workbook');
-      const wb = buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate });
-      downloads.push({ label:'Compliance Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} \u2014 Compliance Detail.xlsx` });
+      setProgress('Building Compliance Detail…', 'Generating Excel workbook');
+      const wb = await buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate });
+      downloads.push({ label:'Compliance Detail', type:'excel', blob: await xlBlob(wb), filename:`${selectedClient.name} \u2014 Compliance Detail.xlsx` });
     }
     if (E.ed) {
-      setProgress('Building Engagement Detail\u2026', 'Generating Excel workbook');
-      const wb = buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
-      downloads.push({ label:'Engagement Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} \u2014 Engagement Detail.xlsx` });
+      setProgress('Building Engagement Detail…', 'Generating Excel workbook');
+      const wb = await buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
+      downloads.push({ label:'Engagement Detail', type:'excel', blob: await xlBlob(wb), filename:`${selectedClient.name} \u2014 Engagement Detail.xlsx` });
     }
     if (E.cs) {
       setProgress('Building Compliance Summary\u2026', 'Generating PDF');
@@ -1144,193 +1152,232 @@ function enrichInsureds(insureds, customProps) {
 }
 
 // ──────────────────────────────────────────────
-// EXCEL STYLE HELPERS — match CPKC standard
+// EXCEL STYLE HELPERS — ExcelJS, exact CPKC standard
 // ──────────────────────────────────────────────
+// All colors in ARGB (FF = fully opaque)
 const XL = {
-  NAVY:'2B3A52', BLUE:'3A7FC1', WHITE:'FFFFFF',
-  GREEN:'1A7F5A', GREEN_BG:'E6F5EF',
-  RED:'C0392B',   RED_BG:'FDF0EE',
-  AMBER:'C97A00', BLUE_BG:'E8F1FB',
-  BODY:'1A2030',  ALT:'F9FAFC',
+  NAVY:'FF2B3A52', BLUE:'FF3A7FC1', WHITE:'FFFFFFFF',
+  GREEN:'FF1A7F5A', GREEN_BG:'FFE6F5EF',
+  RED:'FFC0392B',   RED_BG:'FFFDF0EE',
+  AMBER:'FFC97A00', BLUE_BG:'FFE8F1FB',
+  BODY:'FF1A2030',  ALT:'FFF9FAFC', PLAIN:'FFFFFFFF',
 };
 
-function xs(o) {
-  const s = {};
-  if (o.bg)    s.fill = { patternType:'solid', fgColor:{ rgb:o.bg } };
-  s.font = { name:'Arial', sz:o.sz||10 };
-  if (o.color)  s.font.color = { rgb:o.color };
-  if (o.bold)   s.font.bold  = true;
-  if (o.italic) s.font.italic= true;
-  if (o.halign||o.valign||o.wrap) {
-    s.alignment = {};
-    if (o.halign) s.alignment.horizontal = o.halign;
-    if (o.valign) s.alignment.vertical   = o.valign;
-    if (o.wrap)   s.alignment.wrapText   = true;
+const xlFill  = argb => ({ type:'pattern', pattern:'solid', fgColor:{argb} });
+const xlFont  = (argb, bold=false, sz=10, italic=false) =>
+  ({ name:'Arial', size:sz, bold, italic, color:{argb} });
+
+function applyHdr(cell, bgArgb=XL.NAVY) {
+  cell.fill      = xlFill(bgArgb);
+  cell.font      = xlFont(XL.WHITE, true);
+  cell.alignment = { horizontal:'left', vertical:'middle' };
+}
+function applyData(cell, alt) {
+  cell.fill      = xlFill(alt ? XL.ALT : XL.PLAIN);
+  cell.font      = xlFont(XL.BODY);
+  cell.alignment = { vertical:'middle' };
+}
+function applyStatus(cell, val, alt) {
+  const n = normStatus(val);
+  if (n==='compliant') {
+    cell.fill = xlFill(XL.GREEN_BG);
+    cell.font = xlFont(XL.GREEN, true);
+  } else if (n==='non_compliant') {
+    cell.fill = xlFill(XL.RED_BG);
+    cell.font = xlFont(XL.RED, true);
+  } else {
+    cell.fill = xlFill(XL.BLUE_BG);
+    cell.font = xlFont(XL.BLUE, true);
   }
-  return s;
+  cell.alignment = { vertical:'middle' };
 }
-const xsHdr  = (bg=XL.NAVY) => xs({ bg, color:XL.WHITE, bold:true, sz:10, halign:'left', valign:'center' });
-const xsData = (alt)         => xs({ bg:alt?XL.ALT:XL.WHITE, color:XL.BODY, sz:10 });
-function xsStatus(v, alt) {
-  const n = normStatus(v);
-  if (n==='compliant')     return xs({ bg:XL.GREEN_BG, color:XL.GREEN, bold:true, sz:10 });
-  if (n==='non_compliant') return xs({ bg:XL.RED_BG,   color:XL.RED,   bold:true, sz:10 });
-  return xs({ bg:XL.BLUE_BG, color:XL.BLUE, bold:true, sz:10 });
-}
-function xsDays(v, alt) {
+function applyDays(cell, v, alt) {
   const c = v<=7?XL.RED:v<=30?XL.AMBER:v<=60?XL.BLUE:XL.NAVY;
-  return xs({ bg:alt?XL.ALT:XL.WHITE, color:c, bold:true, sz:10, halign:'center' });
+  cell.fill      = xlFill(alt ? XL.ALT : XL.PLAIN);
+  cell.font      = xlFont(c, true);
+  cell.alignment = { horizontal:'center', vertical:'middle' };
 }
-function xsIssue(v, alt) {
-  const t=(v||'').toLowerCase();
-  return (t==='hard_bounce'||t==='rejected'||t==='reject')
-    ? xs({ bg:XL.RED_BG, color:XL.RED, bold:true, sz:10 })
-    : xsData(alt);
+function applyIssue(cell, val, alt) {
+  const t = (val||'').toLowerCase().replace(/[\s_]/g,'');
+  if (t==='hardbounce'||t==='rejected'||t==='reject') {
+    cell.fill = xlFill(XL.RED_BG);
+    cell.font = xlFont(XL.RED, true);
+  } else {
+    applyData(cell, alt);
+  }
+  cell.alignment = { vertical:'middle' };
 }
 
-// ──────────────────────────────────────────────
-// STYLED SHEET BUILDER
-// ──────────────────────────────────────────────
-function buildStyledSheet(wb, name, headers, rows, opts={}) {
-  const { hdrBg=XL.NAVY, styleCell, colWidths, wrapSet=new Set() } = opts;
-  const ws = {};
-  headers.forEach((h,ci) => {
-    ws[XLSX.utils.encode_cell({r:0,c:ci})] = { v:h, t:'s', s:xsHdr(hdrBg) };
-  });
-  rows.forEach((row,ri) => {
-    const alt = ri%2===0;
-    headers.forEach((h,ci) => {
-      const v   = row[h];
-      const isN = typeof v === 'number';
-      let s = styleCell ? styleCell(h,v,alt,row) : xsData(alt);
-      if (wrapSet.has(h)) s = {...s, alignment:{...(s.alignment||{}), wrapText:true, vertical:'top'}};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:ci})] = { v:v===null||v===undefined?'':v, t:isN?'n':'s', s };
+// Build a fully styled worksheet and return it
+// headers: array of strings
+// rows: array of objects keyed by header string
+// opts: { hdrBg, colWidths, wrapCols, styleFn(cell,header,val,alt,row) }
+function buildWS(wb, name, headers, rows, opts={}) {
+  const { hdrBg=XL.NAVY, colWidths=[], wrapCols=new Set(), styleFn } = opts;
+  const ws = wb.addWorksheet(name);
+
+  // Column widths
+  ws.columns = headers.map((h, i) => ({ header:'', width: colWidths[i] || 20 }));
+
+  // Header row
+  const hdrRow = ws.addRow(headers);
+  hdrRow.height = 22;
+  hdrRow.eachCell(cell => applyHdr(cell, hdrBg));
+
+  // Data rows
+  rows.forEach((row, ri) => {
+    const alt = ri % 2 === 0;
+    const vals = headers.map(h => { const v=row[h]; return (v===null||v===undefined)?'':v; });
+    const dr = ws.addRow(vals);
+    dr.height = 18;
+    headers.forEach((h, ci) => {
+      const cell = dr.getCell(ci+1);
+      const val  = row[h];
+      if (styleFn) {
+        styleFn(cell, h, val, alt, row);
+      } else {
+        applyData(cell, alt);
+      }
+      if (wrapCols.has(h)) cell.alignment = { ...cell.alignment, wrapText:true, vertical:'top' };
     });
   });
-  ws['!ref']        = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}});
-  ws['!autofilter'] = { ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}}) };
-  if (colWidths) ws['!cols'] = colWidths.map(w=>({wch:w}));
-  ws['!rows'] = [{hpt:20}];
-  XLSX.utils.book_append_sheet(wb, ws, name);
+
+  // Freeze row 1
+  ws.views = [{ state:'frozen', ySplit:1 }];
+
+  // Auto-filter on header row
+  if (rows.length) {
+    ws.autoFilter = { from:{row:1,column:1}, to:{row:rows.length+1,column:headers.length} };
+  }
   return ws;
 }
 
-function buildSummarySheet(wb, shortN, clientN, stamp, metricsRows, sheetsRows) {
-  const ws = {};
-  ws['A1'] = { v:`${shortN} \u2014 Compliance Detail`,  t:'s', s:xs({color:XL.NAVY,bold:true,sz:18}) };
-  ws['A2'] = { v:clientN,                               t:'s', s:xs({color:XL.BLUE,sz:13}) };
-  ws['A3'] = { v:`API Retrieval Date: ${stamp}`,        t:'s', s:xs({color:'5A6480',sz:10,italic:true}) };
-  ['Metric','Count','% of Active'].forEach((h,ci) => {
-    ws[XLSX.utils.encode_cell({r:4,c:ci})] = {v:h,t:'s',s:xsHdr()};
-  });
-  metricsRows.forEach(([lbl,n,p],ri) => {
-    const alt=ri%2===0;
-    ws[XLSX.utils.encode_cell({r:5+ri,c:0})] = {v:lbl,t:'s',s:xsData(alt)};
-    ws[XLSX.utils.encode_cell({r:5+ri,c:1})] = {v:n,  t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-    ws[XLSX.utils.encode_cell({r:5+ri,c:2})] = {v:p||'\u2014',t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-  });
-  const sr = 5+metricsRows.length+1;
-  ['Sheet','Description'].forEach((h,ci)=>{ ws[XLSX.utils.encode_cell({r:sr,c:ci})]={v:h,t:'s',s:xsHdr()}; });
-  sheetsRows.forEach(([n,d],ri) => {
-    const alt=ri%2===0;
-    ws[XLSX.utils.encode_cell({r:sr+1+ri,c:0})]={v:n,t:'s',s:xsData(alt)};
-    ws[XLSX.utils.encode_cell({r:sr+1+ri,c:1})]={v:d,t:'s',s:xsData(alt)};
-  });
-  ws['!ref']  = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sr+sheetsRows.length,c:2}});
-  ws['!cols'] = [{wch:42},{wch:12},{wch:14}];
-  ws['!rows'] = [{hpt:30},{hpt:22},{hpt:16}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+async function xlBlob(wb) {
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 // ──────────────────────────────────────────────
-// EXCEL BUILDERS
+// COMPLIANCE DETAIL BUILDER
 // ──────────────────────────────────────────────
-function xlBlob(wb) {
-  const out = XLSX.write(wb, { bookType:'xlsx', type:'array', cellStyles:true });
-  return new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-}
-
-function shortName(n) {
-  if (n.includes('Kansas City'))     return 'CPKC';
-  if (n.includes('Capital Railroad'))return 'CRC';
-  if (n.includes('Musselman'))       return 'M\u0026H';
-  return n.split(' ')[0];
-}
-
-function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate }) {
-  const wb     = XLSX.utils.book_new();
+async function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate }) {
+  const wb     = new ExcelJS.Workbook();
+  wb.creator   = 'HUB CertSecure';
   const sl     = STRUCT[selectedClient.structure];
   const active = insureds.filter(r=>r[C.active]!=='false'&&r[C.paused]!=='true');
   const total  = active.length;
   const comp   = active.filter(r=>normStatus(r[C.status])==='compliant').length;
   const nc     = active.filter(r=>normStatus(r[C.status])==='non_compliant').length;
-  const newp   = total-comp-nc;
+  const newp   = total - comp - nc;
   const stamp  = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
   const cfFields = getCustomFields('cd');
-
-  const groupField = selectedClient.structure==='project' ?'_projectName'
-                   : selectedClient.structure==='location'?'_locationName'
-                   :                                       '_entityType';
+  const isProj = selectedClient.structure === 'project';
+  const isLoc  = selectedClient.structure === 'location';
+  const groupField = isProj?'_projectName':isLoc?'_locationName':'_entityType';
   const groupLabel = sl.groupLabel;
-  const isProj     = selectedClient.structure==='project';
-  const insuredById= {};
-  active.forEach(r=>{ if(r[C.insured_id]) insuredById[r[C.insured_id]]=r; });
 
-  // Summary
-  buildSummarySheet(wb, shortName(selectedClient.name), selectedClient.name, stamp,
+  const insuredById = {};
+  active.forEach(r=>{ if(r[C.insured_id]) insuredById[r[C.insured_id]] = r; });
+
+  // ── Summary sheet ──
+  if (chk('cd-summary')) {
+    const ws0 = wb.addWorksheet('Summary');
+    ws0.columns = [{width:42},{width:12},{width:14}];
+    const t1 = ws0.addRow([`${shortName(selectedClient.name)} \u2014 Compliance Detail`]);
+    t1.getCell(1).font = xlFont(XL.NAVY, true, 18);
+    t1.height = 30;
+    const t2 = ws0.addRow([selectedClient.name]);
+    t2.getCell(1).font = xlFont(XL.BLUE, false, 13);
+    t2.height = 22;
+    const t3 = ws0.addRow([`API Retrieval Date: ${stamp}`]);
+    t3.getCell(1).font = xlFont('FF5A6480', false, 10, true);
+    t3.height = 16;
+    ws0.addRow([]);
+    const mHdr = ws0.addRow(['Metric','Count','% of Active']);
+    mHdr.height = 22;
+    mHdr.eachCell(cell => applyHdr(cell));
     [['Active Third-Parties',total,null],['Compliant',comp,pct(comp,total)],
-     ['Non-Compliant',nc,pct(nc,total)],['New',newp,pct(newp,total)]],
-    [[`${groupLabel} List`,`All active insureds sorted by ${groupLabel.toLowerCase()}`],
-     ['Expiring Coverage','Coverage expiring within 90 days'],
-     ['NC by Coverage & Criteria','Coverage NC counts and criteria side by side'],
-     ['Non-Compliance Reasons','Per-failure rows grouped by insured']]);
-
-  // Helper: build standard headers with optional custom fields
-  function makeHdrs(base, withProj=false) {
-    const h=[...base];
-    if(withProj&&isProj) h.splice(h.indexOf(groupLabel)+1,0,'Project Number');
-    cfFields.forEach(f=>{ if(!h.includes(f.label)) h.push(f.label); });
-    return h;
-  }
-  function addCF(row,r) { cfFields.forEach(f=>{ row[f.label]=r._custom?.[f.key]||''; }); return row; }
-
-  // Entity / Project / Location List
-  if (chk('cd-entitylist')) {
-    let rows = statusFilter!=='all'?active.filter(r=>normStatus(r[C.status])===statusFilter):active;
-    if(selectedClient.structure!=='general')
-      rows=[...rows].sort((a,b)=>(a[groupField]||'').localeCompare(b[groupField]||'')||(a[C.entity_name]||'').localeCompare(b[C.entity_name]||''));
-    const hdrs = makeHdrs(['Insured Name','Contract Number',groupLabel,'Compliance Status','Verification Status','Next Expiration','Notification Email'], true);
-    const sheetRows = rows.map(r => addCF({
-      'Insured Name':       r[C.entity_name]||'',
-      'Contract Number':    r._contractNumber||'',
-      [groupLabel]:         r[groupField]||'',
-      'Project Number':     r._projectNumber||'',
-      'Compliance Status':  fmtStatus(r[C.status]),
-      'Verification Status':fmtVerif(r[C.verify_status]),
-      'Next Expiration':    r[C.next_exp]||'',
-      'Notification Email': fmtNotifList(r._notificationList)||r[C.email]||'',
-    },r));
-    const wids=[40,20,28,18,22,16,40];
-    if(isProj) wids.splice(3,0,16);
-    cfFields.forEach(()=>wids.push(20));
-    buildStyledSheet(wb,`${groupLabel} List`,hdrs,sheetRows,{
-      colWidths:wids,
-      styleCell:(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt),
+     ['Non-Compliant',nc,pct(nc,total)],['New / Pending',newp,pct(newp,total)]].forEach(([l,n,p],ri) => {
+      const alt = ri%2===0;
+      const dr = ws0.addRow([l, n, p||'\u2014']);
+      dr.height = 18;
+      dr.eachCell(cell => applyData(cell, alt));
+      dr.getCell(2).alignment = { horizontal:'right', vertical:'middle' };
+      dr.getCell(3).alignment = { horizontal:'right', vertical:'middle' };
+    });
+    ws0.addRow([]);
+    const sHdr = ws0.addRow(['Sheet','Description']);
+    sHdr.height = 22;
+    sHdr.eachCell(cell => applyHdr(cell));
+    const sheets = [
+      [`${groupLabel} List`,`All active insureds sorted by ${groupLabel.toLowerCase()}`],
+      ['Expiring Coverage','Coverage expiring within 90 days'],
+      ['NC by Coverage & Criteria','Coverage NC counts and criteria breakdown'],
+      ['Non-Compliance Reasons','Per-failure rows with NC reasons'],
+    ];
+    sheets.forEach(([n,d],ri) => {
+      const alt=ri%2===0; const dr=ws0.addRow([n,d]); dr.height=18; dr.eachCell(cell=>applyData(cell,alt));
     });
   }
 
-  // Expiring Coverage
-  if (chk('cd-expiring')&&coverages.length) {
-    const rows=coverages
+  // ── Entity / Project / Location List ──
+  if (chk('cd-entitylist')) {
+    let rows = statusFilter!=='all'?active.filter(r=>normStatus(r[C.status])===statusFilter):active;
+    if (!isProj && !isLoc) {
+      rows = [...rows].sort((a,b)=>(a[groupField]||'').localeCompare(b[groupField]||'')||(a[C.entity_name]||'').localeCompare(b[C.entity_name]||''));
+    }
+    const hdrs = ['Insured Name','Contract Number',groupLabel];
+    if (isProj) hdrs.push('Project Number');
+    cfFields.forEach(f=>hdrs.push(f.label));
+    hdrs.push('Compliance Status','Verification Status','Next Expiration','Notification Email');
+
+    const widths = [71,22,45];
+    if (isProj) widths.push(18);
+    cfFields.forEach(()=>widths.push(22));
+    widths.push(21,23,19,55);
+
+    buildWS(wb, `${groupLabel} List`, hdrs, rows.map(r => {
+      const obj = {
+        'Insured Name':       r[C.entity_name]||'',
+        'Contract Number':    r._contractNumber||'',
+        [groupLabel]:         r[groupField]||'',
+        'Project Number':     r._projectNumber||'',
+        'Compliance Status':  fmtStatus(r[C.status]),
+        'Verification Status':fmtVerif(r[C.verify_status]),
+        'Next Expiration':    r[C.next_exp]||'',
+        'Notification Email': fmtNotifList(r._notificationList)||r[C.email]||'',
+      };
+      cfFields.forEach(f=>{ obj[f.label]=r._custom?.[f.key]||''; });
+      return obj;
+    }), {
+      colWidths: widths,
+      styleFn: (cell,h,v,alt) => {
+        if (h==='Compliance Status') applyStatus(cell,v,alt);
+        else applyData(cell,alt);
+      },
+    });
+  }
+
+  // ── Expiring Coverage ──
+  if (chk('cd-expiring') && coverages.length) {
+    const exp = coverages
       .map(r=>({...r,_days:daysUntilDate(r[C.exp_date])}))
       .filter(r=>r._days!==null&&r._days>=0&&r._days<=90)
       .sort((a,b)=>a._days-b._days);
-    const base=['Insured Name','Contract Number'];
-    if(isProj){base.push('Project Name');base.push('Project Number');}
-    const hdrs=makeHdrs([...base,'Coverage Type','Expiration Date','Days Until','Status']);
-    const sheetRows=rows.map(r=>{
-      const ins=insuredById[r['insured_id']]||{};
-      return addCF({
+
+    const hdrs = ['Insured Name','Contract Number'];
+    if (isProj) { hdrs.push('Project Name'); hdrs.push('Project Number'); }
+    cfFields.forEach(f=>hdrs.push(f.label));
+    hdrs.push('Coverage Type','Expiration Date','Days Until','Status');
+
+    const widths = [71,22];
+    if (isProj) { widths.push(35); widths.push(18); }
+    cfFields.forEach(()=>widths.push(22));
+    widths.push(30,16,12,21);
+
+    buildWS(wb,'Expiring Coverage',hdrs, exp.map(r=>{
+      const ins = insuredById[r['insured_id']]||{};
+      const obj = {
         'Insured Name':   r['insured_name']||'',
         'Contract Number':ins._contractNumber||'',
         'Project Name':   ins._projectName||'',
@@ -1339,155 +1386,186 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
         'Expiration Date':r[C.exp_date]||'',
         'Days Until':     r._days,
         'Status':         fmtStatus(ins[C.status]||''),
-      },ins);
-    });
-    const wids=[40,20];
-    if(isProj){wids.push(28);wids.push(16);}
-    wids.push(30,16,12,18);
-    cfFields.forEach(()=>wids.push(20));
-    buildStyledSheet(wb,'Expiring Coverage',hdrs,sheetRows,{
-      colWidths:wids,
-      styleCell:(h,v,alt)=>{
-        if(h==='Status') return xsStatus(v,alt);
-        if(h==='Days Until'&&typeof v==='number') return xsDays(v,alt);
-        return xsData(alt);
+      };
+      cfFields.forEach(f=>{ obj[f.label]=ins._custom?.[f.key]||''; });
+      return obj;
+    }), {
+      colWidths: widths,
+      styleFn: (cell,h,v,alt) => {
+        if (h==='Status')          applyStatus(cell,v,alt);
+        else if (h==='Days Until') applyDays(cell,typeof v==='number'?v:parseInt(v)||0,alt);
+        else                       applyData(cell,alt);
       },
     });
   }
 
-  // NC by Coverage & Criteria (split layout)
-  if (chk('cd-nccoverage')&&criteria.length) {
-    const map={};
+  // ── NC by Coverage & Criteria ──
+  if (chk('cd-nccoverage') && criteria.length) {
+    const ws = wb.addWorksheet('NC by Coverage & Criteria');
+    ws.columns = [{width:38},{width:22},{width:13},{width:4},{width:80},{width:32},{width:10},{width:11}];
+
+    // Dual headers: left=Navy cols A-C, spacer col D, right=Blue cols E-H
+    const hdr = ws.addRow(['Coverage Type','Non-Compliant Entities','% of Active','','Criteria','Coverage Type','Count','% of Total']);
+    hdr.height = 22;
+    [1,2,3].forEach(ci => applyHdr(hdr.getCell(ci), XL.NAVY));
+    hdr.getCell(4).fill = xlFill(XL.PLAIN);
+    [5,6,7,8].forEach(ci => applyHdr(hdr.getCell(ci), XL.BLUE));
+
+    // Build left data (coverage NC counts)
+    const cvMap = {};
     criteria.filter(r=>normStatus(r[C.overall_comp])==='non_compliant').forEach(r=>{
       (r[C.nc_reasons]||'').split(' | ').forEach(p=>{
         const m=p.trim().match(/^([A-Z_]+):/);
-        if(m){const t=fmtCoverage(m[1]);map[t]=(map[t]||0)+1;}
+        if(m){const t=fmtCoverage(m[1]);cvMap[t]=(cvMap[t]||0)+1;}
       });
     });
-    const critMap={};
+    const leftRows = Object.entries(cvMap).sort((a,b)=>b[1]-a[1]);
+
+    // Build right data (criteria detail)
+    const criMap = {};
     criteria.forEach(r=>{
       (r[C.nc_reasons]||'').split(' | ').forEach(p=>{
-        const ci=p.indexOf(':');if(ci<0)return;
-        const ct=fmtCoverage(p.slice(0,ci).trim()),reason=p.slice(ci+1).trim();
+        const ci=p.indexOf(':'); if(ci<0)return;
+        const ct=fmtCoverage(p.slice(0,ci).trim()), reason=p.slice(ci+1).trim();
         if(!reason)return;
-        const k=`${reason}||${ct}`;critMap[k]=(critMap[k]||0)+1;
+        const k=`${reason}||${ct}`; criMap[k]=(criMap[k]||0)+1;
       });
     });
-    const ws={};
-    ['Coverage Type','Non-Compliant Entities','% of Active'].forEach((h,ci)=>{
-      ws[XLSX.utils.encode_cell({r:0,c:ci})]={v:h,t:'s',s:xsHdr(XL.NAVY)};
-    });
-    ['Criteria','Coverage Type','Count','% of Total'].forEach((h,ci)=>{
-      ws[XLSX.utils.encode_cell({r:0,c:ci+4})]={v:h,t:'s',s:xsHdr(XL.BLUE)};
-    });
-    const leftR=Object.entries(map).sort((a,b)=>b[1]-a[1]);
-    leftR.forEach(([ct,n],ri)=>{
-      const alt=ri%2===0;
-      ws[XLSX.utils.encode_cell({r:ri+1,c:0})]={v:ct,t:'s',s:xsData(alt)};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:1})]={v:n, t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:2})]={v:pct(n,total),t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-    });
-    const critTotal=Object.values(critMap).reduce((a,b)=>a+b,0)||1;
-    const critR=Object.entries(critMap).sort((a,b)=>b[1]-a[1]);
-    critR.forEach(([k,n],ri)=>{
-      const[reason,ct]=k.split('||'),alt=ri%2===0;
-      ws[XLSX.utils.encode_cell({r:ri+1,c:4})]={v:reason,t:'s',s:{...xsData(alt),alignment:{wrapText:true,vertical:'top'}}};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:5})]={v:ct,    t:'s',s:xsData(alt)};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:6})]={v:n,     t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-      ws[XLSX.utils.encode_cell({r:ri+1,c:7})]={v:pct(n,critTotal),t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-    });
-    const maxR=Math.max(leftR.length,critR.length);
-    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:7}});
-    ws['!cols']=[{wch:38},{wch:22},{wch:13},{wch:4},{wch:80},{wch:32},{wch:10},{wch:11}];
-    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:2}})};
-    ws['!rows']=[{hpt:20}];
-    XLSX.utils.book_append_sheet(wb,ws,'NC by Coverage & Criteria');
+    const critTotal = Object.values(criMap).reduce((a,b)=>a+b,0)||1;
+    const rightRows = Object.entries(criMap).sort((a,b)=>b[1]-a[1]);
+    const maxR = Math.max(leftRows.length, rightRows.length);
+
+    for (let ri=0; ri<maxR; ri++) {
+      const alt = ri%2===0;
+      const [lct,ln] = leftRows[ri]||['',''];
+      const [k,rn]   = rightRows[ri]||['',''];
+      const [reason,rct] = k?k.split('||'):['',''];
+      const dr = ws.addRow([
+        lct, ln||'', ln?pct(ln,total):'',
+        '',
+        reason||'', rct||'', rn||'', rn?pct(rn,critTotal):'',
+      ]);
+      dr.height = 18;
+      [1,2,3].forEach(ci => applyData(dr.getCell(ci), alt));
+      dr.getCell(2).alignment = { horizontal:'right', vertical:'middle' };
+      dr.getCell(3).alignment = { horizontal:'right', vertical:'middle' };
+      dr.getCell(4).fill = xlFill(XL.PLAIN);
+      [5,6,7,8].forEach(ci => applyData(dr.getCell(ci), alt));
+      dr.getCell(5).alignment = { wrapText:true, vertical:'top' };
+      dr.getCell(7).alignment = { horizontal:'right', vertical:'middle' };
+      dr.getCell(8).alignment = { horizontal:'right', vertical:'middle' };
+    }
+    ws.views = [{ state:'frozen', ySplit:1 }];
+    ws.autoFilter = { from:{row:1,column:1}, to:{row:maxR+1,column:3} };
   }
 
-  // Non-Compliance Reasons
-  if (chk('cd-ncreasons')&&criteria.length) {
-    const base=['Insured Name','Contract Number'];
-    if(isProj){base.push('Project Name');base.push('Project Number');}
-    const hdrs=makeHdrs([...base,'Compliance Status','Coverage Type','Non-Compliance Reason']);
-    const ncRows=[];
+  // ── Non-Compliance Reasons ──
+  if (chk('cd-ncreasons') && criteria.length) {
+    const hdrs = ['Insured Name','Contract Number'];
+    if (isProj) { hdrs.push('Project Name'); hdrs.push('Project Number'); }
+    cfFields.forEach(f=>hdrs.push(f.label));
+    hdrs.push('Compliance Status','Coverage Type','Non-Compliance Reason');
+
+    const widths = [71,22];
+    if (isProj) { widths.push(35); widths.push(18); }
+    cfFields.forEach(()=>widths.push(22));
+    widths.push(21,30,80);
+
+    const ncRows = [];
     criteria.filter(r=>normStatus(r[C.overall_comp])==='non_compliant'&&r[C.nc_reasons]).forEach(r=>{
-      const ins=insuredById[r['insured_id']]||{};
+      const ins = insuredById[r['insured_id']]||{};
       (r[C.nc_reasons]||'').split(' | ').map(s=>s.trim()).filter(Boolean).forEach(part=>{
-        const ci=part.indexOf(':');
-        const ct=ci>0?fmtCoverage(part.slice(0,ci).trim()):'';
-        const reason=ci>0?part.slice(ci+1).trim():part;
-        ncRows.push(addCF({
-          'Insured Name':         r[C.crit_name]||'',
-          'Contract Number':      ins._contractNumber||'',
-          'Project Name':         ins._projectName||'',
-          'Project Number':       ins._projectNumber||'',
-          'Compliance Status':    fmtStatus(r[C.overall_comp]),
-          'Coverage Type':        ct,
-          'Non-Compliance Reason':reason,
-        },ins));
+        const ci = part.indexOf(':');
+        const ct     = ci>0?fmtCoverage(part.slice(0,ci).trim()):'';
+        const reason = ci>0?part.slice(ci+1).trim():part;
+        const obj = {
+          'Insured Name':          r[C.crit_name]||'',
+          'Contract Number':       ins._contractNumber||'',
+          'Project Name':          ins._projectName||'',
+          'Project Number':        ins._projectNumber||'',
+          'Compliance Status':     fmtStatus(r[C.overall_comp]),
+          'Coverage Type':         ct,
+          'Non-Compliance Reason': reason,
+        };
+        cfFields.forEach(f=>{ obj[f.label]=ins._custom?.[f.key]||''; });
+        ncRows.push(obj);
       });
     });
     ncRows.sort((a,b)=>(a['Insured Name']||'').localeCompare(b['Insured Name']||''));
-    const wids=[40,20];
-    if(isProj){wids.push(28);wids.push(16);}
-    wids.push(18,30,80);
-    cfFields.forEach(()=>wids.push(20));
-    buildStyledSheet(wb,'Non-Compliance Reasons',hdrs,ncRows,{
-      colWidths:wids,
-      wrapSet:new Set(['Non-Compliance Reason']),
-      styleCell:(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt),
+
+    buildWS(wb,'Non-Compliance Reasons',hdrs,ncRows,{
+      colWidths: widths,
+      wrapCols: new Set(['Non-Compliance Reason']),
+      styleFn: (cell,h,v,alt) => {
+        if (h==='Compliance Status') applyStatus(cell,v,alt);
+        else applyData(cell,alt);
+      },
     });
   }
 
   return wb;
 }
 
-function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate }) {
-  const wb     = XLSX.utils.book_new();
+// ──────────────────────────────────────────────
+// ENGAGEMENT DETAIL BUILDER
+// ──────────────────────────────────────────────
+async function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate }) {
+  const wb     = new ExcelJS.Workbook();
+  wb.creator   = 'HUB CertSecure';
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-engWindow);
   const active = insureds.filter(r=>r[C.active]!=='false'&&r[C.paused]!=='true');
   const stamp  = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
   const cfFields = getCustomFields('ed');
   const sl     = STRUCT[selectedClient.structure];
-  const groupField = selectedClient.structure==='project'?'_projectName'
-                   : selectedClient.structure==='location'?'_locationName'
-                   :                                       '_entityType';
+  const isProj = selectedClient.structure === 'project';
+  const isLoc  = selectedClient.structure === 'location';
+  const groupField = isProj?'_projectName':isLoc?'_locationName':'_entityType';
   const groupLabel = sl.groupLabel;
-  const isProj     = selectedClient.structure==='project';
 
   const sentEmails   = new Set(notifications.filter(isEngSend).map(n=>n[C.notif_email]).filter(Boolean));
   const openedEmails = new Set(notifications.filter(isEngOpen).map(n=>n[C.notif_email]).filter(Boolean));
   const clickedEmails= new Set(notifications.filter(isEngClick).map(n=>n[C.notif_email]).filter(Boolean));
   const issueEmails  = new Set(notifications.filter(isEngIssue).map(n=>n[C.notif_email]).filter(Boolean));
 
-  // Summary sheet
-  const ws0={};
-  ws0['A1']={v:`${shortName(selectedClient.name)} \u2014 Engagement Detail`,t:'s',s:xs({color:XL.NAVY,bold:true,sz:18})};
-  ws0['A2']={v:selectedClient.name,t:'s',s:xs({color:XL.BLUE,sz:13})};
-  ws0['A3']={v:`API Retrieval Date: ${stamp}`,t:'s',s:xs({color:'5A6480',sz:10,italic:true})};
-  ws0['A4']={v:`Engagement Window: Last ${engWindow} Days`,t:'s',s:xs({color:'5A6480',sz:10,italic:true})};
-  ['Metric','Count'].forEach((h,ci)=>{ws0[XLSX.utils.encode_cell({r:5,c:ci})]={v:h,t:'s',s:xsHdr()};});
-  [['Emails in Program (unique)',sentEmails.size],['Opened',openedEmails.size],
-   ['Clicked',clickedEmails.size],['Delivery Issues',issueEmails.size]].forEach(([l,n],ri)=>{
-    const alt=ri%2===0;
-    ws0[XLSX.utils.encode_cell({r:6+ri,c:0})]={v:l,t:'s',s:xsData(alt)};
-    ws0[XLSX.utils.encode_cell({r:6+ri,c:1})]={v:n,t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
-  });
-  ws0['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:9,c:1}});
-  ws0['!cols']=[{wch:36},{wch:12}];
-  ws0['!rows']=[{hpt:30},{hpt:22},{hpt:16}];
-  XLSX.utils.book_append_sheet(wb,ws0,'Summary');
+  // ── Summary sheet ──
+  if (chk('ed-summary')) {
+    const ws0 = wb.addWorksheet('Summary');
+    ws0.columns = [{width:38},{width:12}];
+    const t1 = ws0.addRow([`${shortName(selectedClient.name)} \u2014 Engagement Detail`]);
+    t1.getCell(1).font = xlFont(XL.NAVY, true, 18); t1.height=30;
+    const t2 = ws0.addRow([selectedClient.name]);
+    t2.getCell(1).font = xlFont(XL.BLUE, false, 13); t2.height=22;
+    const t3 = ws0.addRow([`API Retrieval Date: ${stamp}`]);
+    t3.getCell(1).font = xlFont('FF5A6480', false, 10, true); t3.height=16;
+    const t4 = ws0.addRow([`Engagement Window: Last ${engWindow} Days`]);
+    t4.getCell(1).font = xlFont('FF5A6480', false, 10, true); t4.height=16;
+    ws0.addRow([]);
+    const mHdr = ws0.addRow(['Metric','Count']);
+    mHdr.height=22; mHdr.eachCell(cell=>applyHdr(cell));
+    [['Emails in Program (unique)',sentEmails.size],['Opened',openedEmails.size],
+     ['Clicked',clickedEmails.size],['Delivery Issues',issueEmails.size]].forEach(([l,n],ri)=>{
+      const alt=ri%2===0; const dr=ws0.addRow([l,n]); dr.height=18;
+      applyData(dr.getCell(1),alt);
+      applyData(dr.getCell(2),alt);
+      dr.getCell(2).alignment={horizontal:'right',vertical:'middle'};
+    });
+  }
 
-  // Helper builders
-  function makeHdrs() {
+  // Helper: standard entity row headers + widths
+  function getHdrs() {
     const h=['Insured Name','Contract Number',groupLabel];
-    if(isProj) h.push('Project Number');
-    cfFields.forEach(f=>{ if(!h.includes(f.label)) h.push(f.label); });
+    if (isProj) h.push('Project Number');
+    cfFields.forEach(f=>h.push(f.label));
     h.push('Compliance Status','Verification Status','Notification Email','Next Expiration');
     return h;
   }
+  function getWidths() {
+    const w=[71,22,45]; if(isProj) w.push(18);
+    cfFields.forEach(()=>w.push(22));
+    w.push(21,23,55,19); return w;
+  }
   function makeRow(r) {
-    const row={
+    const obj={
       'Insured Name':       r[C.entity_name]||'',
       'Contract Number':    r._contractNumber||'',
       [groupLabel]:         r[groupField]||'',
@@ -1497,40 +1575,46 @@ function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDat
       'Notification Email': fmtNotifList(r._notificationList)||r[C.email]||'',
       'Next Expiration':    r[C.next_exp]||'',
     };
-    cfFields.forEach(f=>{ row[f.label]=r._custom?.[f.key]||''; });
-    return row;
+    cfFields.forEach(f=>{ obj[f.label]=r._custom?.[f.key]||''; });
+    return obj;
   }
-  function makeWids() {
-    const w=[40,20,28]; if(isProj) w.push(16);
-    cfFields.forEach(()=>w.push(20));
-    w.push(18,22,40,16); return w;
-  }
-  const sc=(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt);
+  const statusStyleFn = (cell,h,v,alt) => {
+    if(h==='Compliance Status') applyStatus(cell,v,alt); else applyData(cell,alt);
+  };
 
-  if(chk('ed-nocoi')) {
-    const rows=active.filter(r=>{const em=r[C.email];return !em||!sentEmails.has(em);}).map(makeRow);
-    if(rows.length) buildStyledSheet(wb,'No COIs on File',makeHdrs(),rows,{colWidths:makeWids(),styleCell:sc});
+  // ── No COIs on File (Navy header) ──
+  if (chk('ed-nocoi')) {
+    const rows = active.filter(r=>{const em=r[C.email];return !em||!sentEmails.has(em);}).map(makeRow);
+    if (rows.length) buildWS(wb,'No COIs on File',getHdrs(),rows,{colWidths:getWidths(),styleFn:statusStyleFn});
   }
-  if(chk('ed-noeng')) {
-    const rows=active.filter(r=>{const em=r[C.email];return !em||(!openedEmails.has(em)&&!clickedEmails.has(em));}).map(makeRow);
-    if(rows.length) buildStyledSheet(wb,'No Engagement Since Go-Live',makeHdrs(),rows,{colWidths:makeWids(),hdrBg:XL.RED,styleCell:sc});
+
+  // ── No Engagement Since Go-Live (Red header) ──
+  if (chk('ed-noeng')) {
+    const rows = active.filter(r=>{const em=r[C.email];return !em||(!openedEmails.has(em)&&!clickedEmails.has(em));}).map(makeRow);
+    if (rows.length) buildWS(wb,'No Engagement Since Go-Live',getHdrs(),rows,{colWidths:getWidths(),hdrBg:XL.RED,styleFn:statusStyleFn});
   }
-  if(chk('ed-ncnoeng')) {
-    const recentOpen=new Set(notifications.filter(n=>isEngOpen(n)&&new Date(n[C.sent_at])>=cutoff).map(n=>n[C.notif_email]).filter(Boolean));
-    const rows=active.filter(r=>normStatus(r[C.status])==='non_compliant'&&(!r[C.email]||!recentOpen.has(r[C.email]))).map(makeRow);
-    if(rows.length) buildStyledSheet(wb,`NC + No ${engWindow}-Day Engagement`,makeHdrs(),rows,{colWidths:makeWids(),hdrBg:XL.RED,styleCell:sc});
+
+  // ── NC + No X-Day Engagement (Red header) ──
+  if (chk('ed-ncnoeng')) {
+    const recentOpen = new Set(notifications.filter(n=>isEngOpen(n)&&new Date(n[C.sent_at])>=cutoff).map(n=>n[C.notif_email]).filter(Boolean));
+    const rows = active.filter(r=>normStatus(r[C.status])==='non_compliant'&&(!r[C.email]||!recentOpen.has(r[C.email]))).map(makeRow);
+    if (rows.length) buildWS(wb,`NC + No ${engWindow}-Day Engagement`,getHdrs(),rows,{colWidths:getWidths(),hdrBg:XL.RED,styleFn:statusStyleFn});
   }
-  if(chk('ed-undel')) {
-    const hdrs=['Email','Issue Type','Date','Subject'];
-    const rows=notifications.filter(isEngIssue).map(n=>({
-      'Email':      n[C.notif_email]||'',
-      'Issue Type': n[C.eng_type]||'',
-      'Date':       n[C.sent_at]||'',
-      'Subject':    n[C.subject]||'',
+
+  // ── Undeliverable Emails (Navy header) ──
+  if (chk('ed-undel')) {
+    const hdrs  = ['Email','Contract Number','Issue Type','Date','Subject'];
+    const widths = [50,22,18,26,80];
+    const rows  = notifications.filter(isEngIssue).map(n=>({
+      'Email':          n[C.notif_email]||'',
+      'Contract Number':'',
+      'Issue Type':     n[C.eng_type]||'',
+      'Date':           n[C.sent_at]||'',
+      'Subject':        n[C.subject]||'',
     }));
-    if(rows.length) buildStyledSheet(wb,'Undeliverable Emails',hdrs,rows,{
-      colWidths:[40,16,26,80],
-      styleCell:(h,v,alt)=>h==='Issue Type'?xsIssue(v,alt):xsData(alt),
+    if (rows.length) buildWS(wb,'Undeliverable Emails',hdrs,rows,{
+      colWidths:widths,
+      styleFn:(cell,h,v,alt)=>{ if(h==='Issue Type') applyIssue(cell,v,alt); else applyData(cell,alt); },
     });
   }
 
