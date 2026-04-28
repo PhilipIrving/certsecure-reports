@@ -1226,25 +1226,19 @@ function getLogoSrc() {
   return (img && img.src && img.src.startsWith('data:')) ? img.src : null;
 }
 
-function donutSVG(segments, size=110) {
+function donutCSS(segments, size=100) {
   const total = segments.reduce((s,g) => s + g.v, 0);
-  if (!total) return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${size*0.38}" fill="none" stroke="#E2E8F0" stroke-width="${size*0.13}"/></svg>`;
-  const cx=size/2, cy=size/2, r=size*0.38, sw=size*0.13;
-  let paths=[], angle=-Math.PI/2;
+  const hole = Math.round(size * 0.32);
+  if (!total) return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#E8ECF5;-webkit-mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);flex-shrink:0"></div>`;
+  let stops = [], cum = 0;
   for (const seg of segments) {
     if (!seg.v) continue;
-    const slice=(seg.v/total)*2*Math.PI;
-    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
-    const x2=cx+r*Math.cos(angle+slice), y2=cy+r*Math.sin(angle+slice);
-    const large=slice>Math.PI?1:0;
-    if (Math.abs(slice-2*Math.PI)<0.001) {
-      paths.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.c}" stroke-width="${sw}"/>`);
-    } else {
-      paths.push(`<path d="M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2}" fill="none" stroke="${seg.c}" stroke-width="${sw}" stroke-linecap="butt"/>`);
-    }
-    angle+=slice;
+    const s = (cum/total*100).toFixed(2);
+    cum += seg.v;
+    const e = (cum/total*100).toFixed(2);
+    stops.push(`${seg.c} ${s}% ${e}%`);
   }
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths.join('')}</svg>`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:conic-gradient(${stops.join(',')});-webkit-mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);flex-shrink:0"></div>`;
 }
 
 function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
@@ -1280,22 +1274,22 @@ function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
     ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">`
     : `<div style="font-size:17px;font-weight:700;color:#1E2E3D;font-family:Arial,sans-serif">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span><div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">SERVICED BY HUB</div></div>`;
 
-  const compDonut  = donutSVG([{v:comp,c:'#16A34A'},{v:nc,c:'#DC2626'},{v:newp,c:'#EA580C'}]);
-  const coiDonut   = donutSVG([{v:coiCount,c:'#3872B8'},{v:noCoiCount,c:'#DC2626'}]);
+  const compDonut = donutCSS([{v:comp,c:'#16A34A'},{v:nc,c:'#DC2626'},{v:newp,c:'#EA580C'}]);
+  const coiDonut  = donutCSS([{v:coiCount,c:'#3872B8'},{v:noCoiCount,c:'#DC2626'}]);
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>${esc(selectedClient.name)} — Compliance Summary</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:800px;padding:28px 32px 24px}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:800px;padding:28px 32px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .page-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #E8ECF5}
 .badge-pill{display:inline-block;background:#EBF2FB;color:#3872B8;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
 .client-title{font-size:22px;font-weight:700;color:#1E2E3D;line-height:1.15}
 .rpt-date{font-size:11px;color:#5A6B7B;margin-top:3px}
 .sec-hdr{display:flex;align-items:center;gap:8px;margin:18px 0 11px}
 .sec-line{flex:1;height:2px;background:#E8ECF5}
-.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;border-left:3px solid #3872B8;padding-left:7px}
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
 .kpi{border-radius:8px;padding:14px 14px 12px}
 .kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
@@ -1309,19 +1303,19 @@ body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .bcard{border:1px solid #E8ECF5;border-radius:8px;padding:14px 16px}
 .bcard-title{font-size:11px;font-weight:700;color:#1E2E3D;margin-bottom:12px}
-.chart-row{display:flex;align-items:center;gap:14px}
-.chart-legend{flex:1}
+.chart-row{display:flex;flex-direction:row;align-items:center;gap:14px}
+.chart-legend{flex:1;min-width:0}
 .legend-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:10px}
 .legend-item:last-child{border-bottom:none}
 .legend-lbl{display:flex;align-items:center;gap:6px;color:#5A6B7B}
-.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
 .legend-val{font-weight:700;color:#1E2E3D;font-size:11px}
 .prog-row{padding:6px 0}
 .prog-lbl{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
 .prog-lbl span:first-child{color:#5A6B7B}
 .prog-lbl span:last-child{font-weight:700;color:#1E2E3D}
-.prog-track{height:6px;background:#E2E8F0;border-radius:3px}
-.prog-fill{height:100%;border-radius:3px}
+.prog-track{height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden}
+.prog-fill{height:6px;border-radius:3px}
 .exp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
 .exp-card{text-align:center;border:1px solid #E8ECF5;border-radius:7px;padding:11px 8px}
 .exp-days{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8A94A8;margin-bottom:5px}
@@ -1331,7 +1325,8 @@ body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:
 .sum-tbl td{padding:6px 8px;border-bottom:1px solid #F1F5F9}
 .sum-tbl td:last-child{text-align:right;font-weight:700;color:#1E2E3D}
 .sum-tbl tr:last-child td{border-bottom:none}
-.footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:flex;justify-content:space-between;font-size:8.5px;color:#B0B8C8}
+.footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
+.footer-right{text-align:right;white-space:nowrap}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 
@@ -1435,8 +1430,8 @@ ${(showNoCOI || showExpiring) ? `
 </div>` : ''}
 
 <div class="footer">
-  <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel. API Retrieval Date: ${stamp}. Distribution outside of these parties is not permitted without written authorization.</span>
-  <span style="white-space:nowrap;margin-left:16px">HUB CertSecure — Serviced by HUB International&nbsp;&nbsp;|&nbsp;&nbsp;${esc(selectedClient.name)}&nbsp;&nbsp;|&nbsp;&nbsp;Compliance Summary&nbsp;&nbsp;|&nbsp;&nbsp;${fd}&nbsp;&nbsp;|&nbsp;&nbsp;Confidential</span>
+  <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel. API Retrieval Date: ${stamp}. Distribution outside of these parties is not permitted without written authorization.</div>
+  <div class="footer-right">HUB CertSecure — Serviced by HUB International<br>${esc(selectedClient.name)}&nbsp;|&nbsp;Compliance Summary&nbsp;|&nbsp;${fd}&nbsp;|&nbsp;Confidential</div>
 </div>
 </body></html>`;
 }
