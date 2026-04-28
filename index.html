@@ -1906,9 +1906,14 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
   const showIssues  = chk('es-issues');
   const show60      = chk('es-60day');
 
+  const logoSrcES = getLogoSrc();
+  const logoTagES = logoSrcES
+    ? `<img src="${logoSrcES}" style="height:36px;object-fit:contain">`
+    : `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span><div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">SERVICED BY HUB</div></div>`;
+
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Engagement Summary</title><style>${PDF_STYLES}</style></head><body><div class="page">
   <div class="hdr">
-    <div>${logoHTML()}</div>
+    <div>${logoTagES}</div>
     <div class="hdr-right"><div class="badge">Engagement Summary</div><div class="client-name">${esc(selectedClient.name)}</div><div class="rpt-date">Report Date: ${fd}</div></div>
   </div>
   ${showKPI ? `
