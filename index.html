@@ -6,6 +6,12 @@
   <title>CertSecure — Report Generator</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script>
+    // Fallback if jsDelivr fails to load ExcelJS
+    if (typeof ExcelJS === 'undefined') {
+      document.write('<scr'+'ipt src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"><\/scr'+'ipt>');
+    }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -923,6 +929,10 @@ function setProgress(lbl, sub) {
 // GENERATE
 // ──────────────────────────────────────────────
 async function generate() {
+  if (typeof ExcelJS === 'undefined') {
+    alert('ExcelJS library failed to load. Please check your internet connection and refresh the page.');
+    return;
+  }
   const s = getSettings();
   goTo(3);
   document.getElementById('gen-area').style.display  = 'block';
