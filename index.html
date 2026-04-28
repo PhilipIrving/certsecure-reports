@@ -323,6 +323,7 @@
   <div class="header-right">
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
+    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.01</span>
   </div>
 </header>
 
@@ -937,6 +938,9 @@ function enrichInsureds(insureds, customProps) {
   const contractMap     = {};
   const entityTypeMap   = {};
   const notifListMap    = {};
+  const projectNameMap  = {};
+  const projectNumberMap= {};
+  const locationNameMap = {};
 
   for (const row of customProps) {
     const key = (row['contact_email'] || row['insured_name'] || '').trim().toLowerCase();
@@ -945,10 +949,11 @@ function enrichInsureds(insureds, customProps) {
     const fv = (row['field_value'] || '').trim();
     if (!fv || fv === 'nan') continue;
 
-    if (fn === 'contractNumber' && !(key in contractMap))
-      contractMap[key] = fv;
-    if (fn === 'entityType' && !(key in entityTypeMap))
-      entityTypeMap[key] = fv;
+    if (fn === 'contractNumber'  && !(key in contractMap))       contractMap[key]      = fv;
+    if (fn === 'entityType'      && !(key in entityTypeMap))     entityTypeMap[key]    = fv;
+    if (fn === 'projectName'     && !(key in projectNameMap))    projectNameMap[key]   = fv;
+    if (fn === 'projectNumber'   && !(key in projectNumberMap))  projectNumberMap[key] = fv;
+    if (fn === 'locationName'    && !(key in locationNameMap))   locationNameMap[key]  = fv;
     if (fn === 'notificationList' && !(key in notifListMap)) {
       const lower = fv.toLowerCase();
       if (!lower.includes('internalemail') && !lower.includes('paused'))
@@ -960,9 +965,12 @@ function enrichInsureds(insureds, customProps) {
     const key = (r[C.email] || '').trim().toLowerCase();
     return {
       ...r,
-      _contractNumber:   contractMap[key]   || '',
-      _entityType:       entityTypeMap[key]  || '',
-      _notificationList: notifListMap[key]   || '',
+      _contractNumber:   contractMap[key]     || '',
+      _entityType:       entityTypeMap[key]   || '',
+      _projectName:      projectNameMap[key]  || '',
+      _projectNumber:    projectNumberMap[key]|| '',
+      _locationName:     locationNameMap[key] || '',
+      _notificationList: notifListMap[key]    || '',
     };
   });
 }
@@ -1009,18 +1017,41 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
   wsSummary['!cols'] = [{wch:35},{wch:10},{wch:13}];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-  // Insured List sheet
+  // Entity List sheet — grouping column varies by client structure
   if (document.getElementById('cd-entitylist').checked) {
+    const sl = STRUCT[selectedClient.structure];
+    // Determine which grouping field and label to use
+    const groupField = selectedClient.structure === 'project'  ? '_projectName'
+                     : selectedClient.structure === 'location' ? '_locationName'
+                     :                                           '_entityType';
+    const groupLabel = sl.groupLabel; // "Entity Type", "Project", or "Location"
+
     let rows = statusFilter !== 'all' ? active.filter(r => normStatus(r[C.status]) === statusFilter) : active;
-    addSheet(wb, rows.map(r => ({
-      'Insured Name':        r[C.entity_name]        || '',
-      'Contract Number':     r._contractNumber        || '',
-      'Entity Type':         r._entityType            || '',
-      'Compliance Status':   fmtStatus(r[C.status]),
-      'Verification Status': fmtVerif(r[C.verify_status]),
-      'Next Expiration':     r[C.next_exp]            || '',
-      'Notification Email':  r._notificationList || r[C.email] || '',
-    })), 'Entity List', [40,20,20,18,22,16,40]);
+    // Sort by group then name for project/location clients
+    if (selectedClient.structure !== 'general') {
+      rows = [...rows].sort((a,b) => {
+        const ga = a[groupField]||'', gb = b[groupField]||'';
+        return ga.localeCompare(gb) || (a[C.entity_name]||'').localeCompare(b[C.entity_name]||'');
+      });
+    }
+    addSheet(wb, rows.map(r => {
+      const row = {
+        'Insured Name':        r[C.entity_name]        || '',
+        'Contract Number':     r._contractNumber        || '',
+        [groupLabel]:          r[groupField]            || '',
+      };
+      // Add Project Number column for subcontractor clients
+      if (selectedClient.structure === 'project') {
+        row['Project Number'] = r._projectNumber || '';
+      }
+      row['Compliance Status']   = fmtStatus(r[C.status]);
+      row['Verification Status'] = fmtVerif(r[C.verify_status]);
+      row['Next Expiration']     = r[C.next_exp]  || '';
+      row['Notification Email']  = r._notificationList || r[C.email] || '';
+      return row;
+    }), `${groupLabel} List`, selectedClient.structure === 'project'
+      ? [40,20,28,16,18,22,16,40]
+      : [40,20,24,18,22,16,40]);
   }
 
   // Expiring coverage — calculate days from expiration_date
@@ -1118,16 +1149,24 @@ function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDat
   wsSummary['!cols'] = [{wch:32},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-  const eRow = r => ({
-    'Insured Name':        r[C.entity_name]        || '',
-    'Contract Number':     r._contractNumber        || '',
-    'Entity Type':         r._entityType            || '',
-    'Compliance Status':   fmtStatus(r[C.status]),
-    'Verification Status': fmtVerif(r[C.verify_status]),
-    'Notification Email':  r._notificationList || r[C.email] || '',
-    'Next Expiration':     r[C.next_exp]            || '',
-  });
-  const eCols = [40,20,20,18,22,40,16];
+  const sl = STRUCT[selectedClient.structure];
+  const groupField = selectedClient.structure === 'project'  ? '_projectName'
+                   : selectedClient.structure === 'location' ? '_locationName'
+                   :                                           '_entityType';
+  const eRow = r => {
+    const row = {
+      'Insured Name':        r[C.entity_name]           || '',
+      'Contract Number':     r._contractNumber           || '',
+      [sl.groupLabel]:       r[groupField]               || '',
+    };
+    if (selectedClient.structure === 'project') row['Project Number'] = r._projectNumber || '';
+    row['Compliance Status']   = fmtStatus(r[C.status]);
+    row['Verification Status'] = fmtVerif(r[C.verify_status]);
+    row['Notification Email']  = r._notificationList || r[C.email] || '';
+    row['Next Expiration']     = r[C.next_exp] || '';
+    return row;
+  };
+  const eCols = selectedClient.structure === 'project' ? [40,20,28,16,18,22,40,16] : [40,20,24,18,22,40,16];
 
   // No COI on File — insureds whose email has never sent anything
   if (document.getElementById('ed-nocoi').checked) {
