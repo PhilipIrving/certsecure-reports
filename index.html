@@ -1221,22 +1221,53 @@ const PDF_STYLES = `
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
-function logoHTML() {
-  return `<div style="font-size:18px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:2px 7px;border-radius:4px">SECURE</span></div>
-          <div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:3px">SERVICED BY HUB</div>`;
+function getLogoSrc() {
+  const img = document.querySelector('.header-logo');
+  return (img && img.src && img.src.startsWith('data:')) ? img.src : null;
+}
+
+function donutSVG(segments, size=110) {
+  const total = segments.reduce((s,g) => s + g.v, 0);
+  if (!total) return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${size*0.38}" fill="none" stroke="#E2E8F0" stroke-width="${size*0.13}"/></svg>`;
+  const cx=size/2, cy=size/2, r=size*0.38, sw=size*0.13;
+  let paths=[], angle=-Math.PI/2;
+  for (const seg of segments) {
+    if (!seg.v) continue;
+    const slice=(seg.v/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    const x2=cx+r*Math.cos(angle+slice), y2=cy+r*Math.sin(angle+slice);
+    const large=slice>Math.PI?1:0;
+    if (Math.abs(slice-2*Math.PI)<0.001) {
+      paths.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.c}" stroke-width="${sw}"/>`);
+    } else {
+      paths.push(`<path d="M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2}" fill="none" stroke="${seg.c}" stroke-width="${sw}" stroke-linecap="butt"/>`);
+    }
+    angle+=slice;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths.join('')}</svg>`;
 }
 
 function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
   const active = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
-  const total = active.length;
-  const comp  = cnt(active, r => normStatus(r[C.status]) === 'compliant');
-  const nc    = cnt(active, r => normStatus(r[C.status]) === 'non_compliant');
-  const newp  = total - comp - nc;
+  const total  = active.length;
+  const comp   = cnt(active, r => normStatus(r[C.status]) === 'compliant');
+  const nc     = cnt(active, r => normStatus(r[C.status]) === 'non_compliant');
+  const newp   = total - comp - nc;
+
+  // COI derived from coverages — insureds with at least one coverage row
+  const coiIds    = new Set(coverages.map(r => r['insured_id']).filter(Boolean));
+  const coiCount  = cnt(active, r => coiIds.has(r[C.insured_id]));
+  const noCoiCount= total - coiCount;
+  const noCoiNC   = cnt(active, r => !coiIds.has(r[C.insured_id]) && normStatus(r[C.status]) === 'non_compliant');
+  const noCoiNew  = cnt(active, r => !coiIds.has(r[C.insured_id]) && normStatus(r[C.status]) !== 'compliant' && normStatus(r[C.status]) !== 'non_compliant');
+  const noCoiComp = noCoiCount - noCoiNC - noCoiNew;
+
   const exp7  = cnt(coverages, r => expiringSoon(r[C.exp_date], 7));
   const exp30 = cnt(coverages, r => expiringSoon(r[C.exp_date], 30));
   const exp60 = cnt(coverages, r => expiringSoon(r[C.exp_date], 60));
   const exp90 = cnt(coverages, r => expiringSoon(r[C.exp_date], 90));
   const fd    = fmtDate(reportDate);
+  const stamp = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
 
   const showKPI      = chk('cs-kpi');
   const showBreakdown= chk('cs-breakdown');
@@ -1244,48 +1275,170 @@ function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
   const showNoCOI    = chk('cs-nocoi');
   const showExpiring = chk('cs-expiring');
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Compliance Summary</title><style>${PDF_STYLES}</style></head><body><div class="page">
-  <div class="hdr">
-    <div>${logoHTML()}</div>
-    <div class="hdr-right"><div class="badge">Compliance Summary</div><div class="client-name">${esc(selectedClient.name)}</div><div class="rpt-date">Report Date: ${fd}</div></div>
+  const logoSrc = getLogoSrc();
+  const logoTag = logoSrc
+    ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">`
+    : `<div style="font-size:17px;font-weight:700;color:#1E2E3D;font-family:Arial,sans-serif">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span><div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">SERVICED BY HUB</div></div>`;
+
+  const compDonut  = donutSVG([{v:comp,c:'#16A34A'},{v:nc,c:'#DC2626'},{v:newp,c:'#EA580C'}]);
+  const coiDonut   = donutSVG([{v:coiCount,c:'#3872B8'},{v:noCoiCount,c:'#DC2626'}]);
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(selectedClient.name)} — Compliance Summary</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:800px;padding:28px 32px 24px}
+.page-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #E8ECF5}
+.badge-pill{display:inline-block;background:#EBF2FB;color:#3872B8;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
+.client-title{font-size:22px;font-weight:700;color:#1E2E3D;line-height:1.15}
+.rpt-date{font-size:11px;color:#5A6B7B;margin-top:3px}
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:18px 0 11px}
+.sec-line{flex:1;height:2px;background:#E8ECF5}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+.kpi{border-radius:8px;padding:14px 14px 12px}
+.kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
+.kpi-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.kpi.grey .kpi-label{color:#5A6B7B}.kpi.green .kpi-label{color:#15803D}.kpi.red .kpi-label{color:#B91C1C}.kpi.amber .kpi-label{color:#B45309}
+.kpi-val{font-size:28px;font-weight:700;line-height:1}
+.kpi.grey .kpi-val{color:#1E2E3D}.kpi.green .kpi-val{color:#16A34A}.kpi.red .kpi-val{color:#DC2626}.kpi.amber .kpi-val{color:#D97706}
+.kpi-pct{font-size:11px;font-weight:600;margin-top:3px}
+.kpi.green .kpi-pct{color:#16A34A}.kpi.red .kpi-pct{color:#DC2626}.kpi.amber .kpi-pct{color:#D97706}
+.kpi-sub{font-size:9px;color:#8A94A8;margin-top:2px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bcard{border:1px solid #E8ECF5;border-radius:8px;padding:14px 16px}
+.bcard-title{font-size:11px;font-weight:700;color:#1E2E3D;margin-bottom:12px}
+.chart-row{display:flex;align-items:center;gap:14px}
+.chart-legend{flex:1}
+.legend-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:10px}
+.legend-item:last-child{border-bottom:none}
+.legend-lbl{display:flex;align-items:center;gap:6px;color:#5A6B7B}
+.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.legend-val{font-weight:700;color:#1E2E3D;font-size:11px}
+.prog-row{padding:6px 0}
+.prog-lbl{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
+.prog-lbl span:first-child{color:#5A6B7B}
+.prog-lbl span:last-child{font-weight:700;color:#1E2E3D}
+.prog-track{height:6px;background:#E2E8F0;border-radius:3px}
+.prog-fill{height:100%;border-radius:3px}
+.exp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.exp-card{text-align:center;border:1px solid #E8ECF5;border-radius:7px;padding:11px 8px}
+.exp-days{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8A94A8;margin-bottom:5px}
+.exp-val{font-size:22px;font-weight:700;line-height:1}
+.exp-lbl{font-size:9px;color:#8A94A8;margin-top:3px}
+.sum-tbl{width:100%;border-collapse:collapse;font-size:10px}
+.sum-tbl td{padding:6px 8px;border-bottom:1px solid #F1F5F9}
+.sum-tbl td:last-child{text-align:right;font-weight:700;color:#1E2E3D}
+.sum-tbl tr:last-child td{border-bottom:none}
+.footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:flex;justify-content:space-between;font-size:8.5px;color:#B0B8C8}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+
+<div class="page-hdr">
+  <div>${logoTag}</div>
+  <div style="text-align:right">
+    <div class="badge-pill">Compliance Summary</div>
+    <div class="client-title">${esc(selectedClient.name)}</div>
+    <div class="rpt-date">Report Date: ${fd}</div>
   </div>
-  ${showKPI ? `
-  <div class="sec-hdr"><div class="sec-title">Program Compliance Summary</div></div>
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-lbl">Active Third-Parties</div><div class="kpi-val">${total.toLocaleString()}</div><div class="kpi-sub" style="color:#3872B8">Total program scope</div></div>
-    <div class="kpi"><div class="kpi-lbl">Compliant</div><div class="kpi-val" style="color:#16A34A">${comp.toLocaleString()}</div><div class="kpi-sub" style="color:#16A34A">${pct(comp,total)} of active</div></div>
-    <div class="kpi"><div class="kpi-lbl">Non-Compliant</div><div class="kpi-val" style="color:#DC2626">${nc.toLocaleString()}</div><div class="kpi-sub" style="color:#DC2626">${pct(nc,total)} of active</div></div>
-    <div class="kpi"><div class="kpi-lbl">New</div><div class="kpi-val" style="color:#EA580C">${newp.toLocaleString()}</div><div class="kpi-sub" style="color:#EA580C">${pct(newp,total)} of active</div></div>
-  </div>` : ''}
-  ${(showBreakdown||showCOI) ? `
-  <div class="sec-hdr"><div class="sec-title">Compliance Breakdown</div></div>
-  <div class="two-col">
-    ${showBreakdown ? `<div class="bcard"><div class="bcard-title">Compliance Status</div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#16A34A"></span>Compliant</div><div class="bval">${comp.toLocaleString()} (${pct(comp,total)})</div></div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>Non-Compliant</div><div class="bval">${nc.toLocaleString()} (${pct(nc,total)})</div></div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#EA580C"></span>New / Pending</div><div class="bval">${newp.toLocaleString()} (${pct(newp,total)})</div></div>
-    </div>` : '<div></div>'}
-    <div></div>
-  </div>` : ''}
-  ${showExpiring ? `
-  <div class="sec-hdr"><div class="sec-title">Expiring Coverage</div></div>
-  <div class="exp-grid">
-    <div class="exp-card"><div class="exp-days">7 Days</div><div class="exp-val" style="color:#DC2626">${exp7}</div><div class="exp-lbl">coverages</div></div>
-    <div class="exp-card"><div class="exp-days">30 Days</div><div class="exp-val" style="color:#EA580C">${exp30}</div><div class="exp-lbl">coverages</div></div>
-    <div class="exp-card"><div class="exp-days">60 Days</div><div class="exp-val">${exp60}</div><div class="exp-lbl">coverages</div></div>
-    <div class="exp-card"><div class="exp-days">90 Days</div><div class="exp-val">${exp90}</div><div class="exp-lbl">coverages</div></div>
+</div>
+
+${showKPI ? `
+<div class="sec-hdr"><div class="sec-lbl">Program Compliance Summary</div><div class="sec-line"></div></div>
+<div class="kpi-row">
+  <div class="kpi grey">
+    <div class="kpi-label">Active Third-Parties</div>
+    <div class="kpi-val">${total.toLocaleString()}</div>
+    <div class="kpi-pct" style="color:#3872B8">&nbsp;</div>
+    <div class="kpi-sub">Total program scope</div>
   </div>
-  <table class="stbl">
-    <tr><td>Total Compliant Insureds</td><td>${comp}</td></tr>
-    <tr><td>Coverages expiring within 30 days</td><td>${exp30}</td></tr>
-    <tr><td>Coverages expiring within 60 days</td><td>${exp60}</td></tr>
-    <tr><td>Coverages expiring within 90 days</td><td>${exp90}</td></tr>
-  </table>` : ''}
-  <div class="footer">
-    <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel.</span>
-    <span>HUB CertSecure — Serviced by HUB International | ${esc(selectedClient.name)} | Compliance Summary | ${fd}</span>
+  <div class="kpi green">
+    <div class="kpi-label">Compliant</div>
+    <div class="kpi-val">${comp.toLocaleString()}</div>
+    <div class="kpi-pct">${pct(comp,total)} of active</div>
+    <div class="kpi-sub">Meets all requirements</div>
   </div>
-</div></body></html>`;
+  <div class="kpi red">
+    <div class="kpi-label">Non-Compliant</div>
+    <div class="kpi-val">${nc.toLocaleString()}</div>
+    <div class="kpi-pct">${pct(nc,total)} of active</div>
+    <div class="kpi-sub">Does not meet requirements</div>
+  </div>
+  <div class="kpi amber">
+    <div class="kpi-label">New</div>
+    <div class="kpi-val">${newp.toLocaleString()}</div>
+    <div class="kpi-pct">${pct(newp,total)} of active</div>
+    <div class="kpi-sub">Awaiting first review</div>
+  </div>
+</div>` : ''}
+
+${(showBreakdown || showCOI) ? `
+<div class="sec-hdr"><div class="sec-lbl">Compliance Breakdown</div><div class="sec-line"></div></div>
+<div class="two-col">
+  ${showBreakdown ? `<div class="bcard">
+    <div class="bcard-title">Compliance Status</div>
+    <div class="chart-row">
+      <div>${compDonut}</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-lbl"><span class="ldot" style="background:#16A34A"></span>Compliant</div><div class="legend-val">${comp.toLocaleString()} (${pct(comp,total)})</div></div>
+        <div class="legend-item"><div class="legend-lbl"><span class="ldot" style="background:#DC2626"></span>Non-Compliant</div><div class="legend-val">${nc.toLocaleString()} (${pct(nc,total)})</div></div>
+        <div class="legend-item"><div class="legend-lbl"><span class="ldot" style="background:#EA580C"></span>New</div><div class="legend-val">${newp.toLocaleString()} (${pct(newp,total)})</div></div>
+      </div>
+    </div>
+  </div>` : '<div></div>'}
+  ${showCOI ? `<div class="bcard">
+    <div class="bcard-title">COI Submission Status</div>
+    <div class="chart-row">
+      <div>${coiDonut}</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-lbl"><span class="ldot" style="background:#3872B8"></span>COI on File</div><div class="legend-val">${coiCount.toLocaleString()} (${pct(coiCount,total)})</div></div>
+        <div class="legend-item"><div class="legend-lbl"><span class="ldot" style="background:#DC2626"></span>No COI on File</div><div class="legend-val">${noCoiCount.toLocaleString()} (${pct(noCoiCount,total)})</div></div>
+      </div>
+    </div>
+  </div>` : '<div></div>'}
+</div>` : ''}
+
+${(showNoCOI || showExpiring) ? `
+<div class="sec-hdr"><div class="sec-lbl">Additional Program Data</div><div class="sec-line"></div></div>
+<div class="two-col">
+  ${showNoCOI ? `<div class="bcard">
+    <div class="bcard-title">No COI on File — Breakdown</div>
+    <div class="prog-row">
+      <div class="prog-lbl"><span>Non-Compliant</span><span>${noCoiNC.toLocaleString()} / ${noCoiCount.toLocaleString()}</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${barPct(noCoiNC,noCoiCount)}%;background:#DC2626"></div></div>
+    </div>
+    <div class="prog-row">
+      <div class="prog-lbl"><span>Pending / New</span><span>${noCoiNew.toLocaleString()} / ${noCoiCount.toLocaleString()}</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${barPct(noCoiNew,noCoiCount)}%;background:#EA580C"></div></div>
+    </div>
+    <div class="prog-row">
+      <div class="prog-lbl"><span>Compliant (no COI record)</span><span>${noCoiComp.toLocaleString()} / ${noCoiCount.toLocaleString()}</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${barPct(noCoiComp,noCoiCount)}%;background:#16A34A"></div></div>
+    </div>
+  </div>` : '<div></div>'}
+  ${showExpiring ? `<div class="bcard">
+    <div class="bcard-title">Expiring Coverage</div>
+    <div class="exp-grid">
+      <div class="exp-card"><div class="exp-days">7 Days</div><div class="exp-val" style="color:#DC2626">${exp7}</div><div class="exp-lbl">entities</div></div>
+      <div class="exp-card"><div class="exp-days">30 Days</div><div class="exp-val" style="color:#D97706">${exp30}</div><div class="exp-lbl">entities</div></div>
+      <div class="exp-card"><div class="exp-days">60 Days</div><div class="exp-val" style="color:#3872B8">${exp60}</div><div class="exp-lbl">entities</div></div>
+      <div class="exp-card"><div class="exp-days">90 Days</div><div class="exp-val" style="color:#1E2E3D">${exp90}</div><div class="exp-lbl">entities</div></div>
+    </div>
+    <table class="sum-tbl">
+      <tr><td>Total Compliant Insureds</td><td>${comp.toLocaleString()}</td></tr>
+      <tr><td>Expiring within 30 days</td><td>${exp30} (${pct(exp30,comp)})</td></tr>
+      <tr><td>Expiring within 60 days</td><td>${exp60} (${pct(exp60,comp)})</td></tr>
+      <tr><td>Expiring within 90 days</td><td>${exp90} (${pct(exp90,comp)})</td></tr>
+    </table>
+  </div>` : '<div></div>'}
+</div>` : ''}
+
+<div class="footer">
+  <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel. API Retrieval Date: ${stamp}. Distribution outside of these parties is not permitted without written authorization.</span>
+  <span style="white-space:nowrap;margin-left:16px">HUB CertSecure — Serviced by HUB International&nbsp;&nbsp;|&nbsp;&nbsp;${esc(selectedClient.name)}&nbsp;&nbsp;|&nbsp;&nbsp;Compliance Summary&nbsp;&nbsp;|&nbsp;&nbsp;${fd}&nbsp;&nbsp;|&nbsp;&nbsp;Confidential</span>
+</div>
+</body></html>`;
 }
 
 function buildEngagementSummaryHTML(notifications, { reportDate }) {
