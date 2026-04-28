@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CertSecure Data — HUB International</title>
+  <style>
+    /* ── Fonts ── */
+    @font-face {
+      font-family: "Gotham";
+      src: local("Gotham"), local("Gotham-Book");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "Gotham";
+      src: local("Gotham Medium"), local("Gotham-Medium");
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: "Gotham";
+      src: local("Gotham Bold"), local("Gotham-Bold");
+      font-weight: 700;
+    }
+
+    /* ── Tokens ── */
+    :root {
+      --navy:    #2B3A52;
+      --blue:    #3A7FC1;
+      --green:   #1A7F5A;
+      --red:     #C0392B;
+      --amber:   #C97A00;
+      --white:   #FFFFFF;
+      --alt:     #F9FAFC;
+      --grey:    #B0B8C8;
+      --muted:   #5A6480;
+      --border:  #E8ECF5;
+      --font:    "Gotham", "Arial", "Helvetica Neue", sans-serif;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Base ── */
+    body {
+      font-family: var(--font);
+      background: var(--alt);
+      color: var(--navy);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--navy);
+      height: 4px;
+      width: 100%;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .logo-wrap img {
+      height: 48px;
+      display: block;
+    }
+    /* Fallback if logo file isn't present yet */
+    .logo-wrap .logo-fallback {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .logo-fallback .cs {
+      font-family: var(--font);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--navy);
+      line-height: 1;
+    }
+    .logo-fallback .cs span { color: var(--blue); }
+    .logo-fallback .hub {
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .header-divider {
+      width: 1px;
+      height: 40px;
+      background: var(--border);
+    }
+    .header-title h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -0.3px;
+    }
+    .header-title p {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+    .header-badge {
+      background: var(--alt);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 48px 80px;
+    }
+
+    /* ── Section label ── */
+    .sec-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+      margin-top: 40px;
+    }
+    .sec-label:first-child { margin-top: 0; }
+
+    /* ── Section heading bar ── */
+    .sec-bar {
+      background: var(--navy);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: 4px 4px 0 0;
+      margin-bottom: 0;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* ── Intro card ── */
+    .intro-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--blue);
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-bottom: 0;
+    }
+    thead tr {
+      background: var(--navy);
+    }
+    thead th {
+      color: var(--white);
+      font-weight: 600;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 9px 14px;
+      text-align: left;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: var(--alt); }
+    tbody td {
+      padding: 9px 14px;
+      color: var(--navy);
+      vertical-align: top;
+    }
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    /* ── Code / mono ── */
+    code {
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 11.5px;
+      background: #EEF1F8;
+      color: var(--navy);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    pre {
+      background: var(--navy);
+      color: #C8D4E8;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 12px;
+      padding: 20px 24px;
+      border-radius: 6px;
+      overflow-x: auto;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    pre code {
+      background: none;
+      border: none;
+      color: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+    .pre-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    /* ── Workflow cards ── */
+    .workflow-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .wf-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px 20px;
+    }
+    .wf-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .wf-trigger {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--blue);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .wf-desc {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Report type pills ── */
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .report-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 18px;
+      border-top: 3px solid var(--blue);
+    }
+    .report-card.green { border-top-color: var(--green); }
+    .report-card.red   { border-top-color: var(--red); }
+    .report-card.amber { border-top-color: var(--amber); }
+    .report-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .report-format {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 3px;
+      margin: 4px 0 8px;
+    }
+    .fmt-pdf  { background: #FDF0EE; color: var(--red); }
+    .fmt-xlsx { background: #E6F5EF; color: var(--green); }
+    .report-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Secrets grid ── */
+    .secrets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Steps ── */
+    .steps { margin-bottom: 20px; }
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-body { flex: 1; }
+    .step-title { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 3px; }
+    .step-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .badge-blue   { background: #E8F1FB; color: var(--blue); }
+    .badge-green  { background: #E6F5EF; color: var(--green); }
+    .badge-navy   { background: #EEF1F8; color: var(--navy); }
+    .badge-amber  { background: #FFF8E6; color: var(--amber); }
+
+    /* ── Whitelist tags ── */
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tag {
+      background: #EEF1F8;
+      border: 1px solid var(--border);
+      color: var(--navy);
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 4px;
+    }
+
+    /* ── Security notice ── */
+    .security-notice {
+      background: #EEF1F8;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--navy);
+      border-radius: 6px;
+      padding: 16px 20px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .security-notice strong { color: var(--navy); }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--navy);
+      color: var(--grey);
+      font-size: 11px;
+      padding: 24px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    footer span { opacity: 0.7; }
+
+    /* ── Utility ── */
+    .mt-8  { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-0  { margin-bottom: 0; }
+    .text-muted { color: var(--muted); font-size: 12px; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 700px) {
+      header, .page, footer { padding-left: 20px; padding-right: 20px; }
+      .workflow-grid, .report-grid, .secrets-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar"></div>
+
+<!-- ── Header ─────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <div class="logo-wrap">
+      <img src="assets/logo.png" alt="CertSecure — Serviced by HUB International"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      <div class="logo-fallback" style="display:none;">
+        <div class="cs"><span>CERT</span>SECURE</div>
+        <div class="hub">SERVICED BY ⊙ HUB</div>
+      </div>
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-title">
+      <h1>CertSecure Data</h1>
+      <p>Compliance sync &amp; report generation — HUB International</p>
+    </div>
+  </div>
+  <div class="header-badge">Internal Use Only</div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────── -->
+<div class="page">
+
+  <div class="intro-card">
+    Automated compliance data sync and report generation for HUB CertSecure clients.
+    Pulls data nightly from the Evident API and Google Sheets, stores it as CSVs in the
+    <code>data/</code> folder, and generates branded Excel and PDF reports on demand via GitHub Actions.
+  </div>
+
+  <!-- Workflows -->
+  <div class="sec-label">Workflows</div>
+  <div class="workflow-grid">
+    <div class="wf-card">
+      <div class="wf-name">CertSecure Data Sync</div>
+      <div class="wf-trigger">Nightly — 9:00 PM CT</div>
+      <div class="wf-desc">
+        Runs <code>sync.js</code> → <code>sync-engagement.js</code> → <code>sync-custom-properties.js</code>
+        and commits updated CSVs to <code>data/</code>.
+      </div>
+    </div>
+    <div class="wf-card">
+      <div class="wf-name">Generate CertSecure Reports</div>
+      <div class="wf-trigger">Manual — GitHub Actions</div>
+      <div class="wf-desc">
+        Runs <code>generate_reports.py</code> for one client or all active clients,
+        then commits Excel + PDF reports to <code>reports/</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- Repo Structure -->
+  <div class="sec-label">Repo Structure</div>
+  <pre><code>certsecure-data/
+├── .github/workflows/
+│   ├── sync.yml                   ← Nightly data sync
+│   └── generate-reports.yml       ← On-demand report generation
+├── config/
+│   └── clients.json               ← Client list, go-live dates, report settings
+├── data/                          ← Auto-updated CSVs (written by GitHub Actions)
+│   ├── insureds.csv
+│   ├── coverages.csv
+│   ├── criteria.csv
+│   ├── custom_properties.csv
+│   ├── summaries.csv
+│   ├── engagement.csv
+│   └── sync_metadata.csv
+├── reports/                       ← Generated reports (written by GitHub Actions)
+├── src/
+│   ├── sync.js                    ← Evident API → compliance CSVs
+│   ├── sync-custom-properties.js  ← Evident /export → custom_properties
+│   ├── sync-engagement.js         ← Google Sheets → engagement.csv
+│   ├── sync-utils.js              ← Shared utilities
+│   ├── generate_reports.py        ← Report orchestrator
+│   ├── build_compliance_detail.py
+│   ├── build_compliance_summary.py
+│   ├── build_engagement_detail.py
+│   └── build_engagement_summary.py
+├── assets/
+│   └── logo.png                   ← CertSecure logo
+├── .gitignore
+├── package.json
+└── README.html</code></pre>
+
+  <!-- Reports -->
+  <div class="sec-label">Reports</div>
+  <div class="report-grid">
+    <div class="report-card">
+      <div class="report-name">Compliance Summary</div>
+      <div class="report-format fmt-pdf">PDF</div>
+      <div class="report-desc">KPIs, compliance &amp; COI status breakdown, no-COI breakdown, expiring coverage by 7 / 30 / 60 / 90 day windows.</div>
+    </div>
+    <div class="report-card green">
+      <div class="report-name">Compliance Detail</div>
+      <div class="report-format fmt-xlsx">Excel · 5 Sheets</div>
+      <div class="report-desc">Summary, Entity List, Expiring Coverage, NC by Coverage &amp; Criteria, Non-Compliance Reasons.</div>
+    </div>
+    <div class="report-card amber">
+      <div class="report-name">Engagement Summary</div>
+      <div class="report-format fmt-pdf">PDF</div>
+      <div class="report-desc">Email KPIs, open/click rates, deliverability breakdown, delivery issue types, 60-day engagement funnel.</div>
+    </div>
+    <div class="report-card red">
+      <div class="report-name">Engagement Detail</div>
+      <div class="report-format fmt-xlsx">Excel · 5 Sheets</div>
+      <div class="report-desc">Summary, No COIs on File, No Engagement Since Go-Live, NC + No Recent Engagement, Undeliverable Emails.</div>
+    </div>
+  </div>
+
+  <!-- Generating Reports -->
+  <div class="sec-label">Generating Reports</div>
+  <div class="card">
+    <div class="card-header">How to Run a Report</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Open GitHub Actions</div><div class="step-desc">Go to the <strong>Actions</strong> tab in this repo.</div></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Select the workflow</div><div class="step-desc">Click <strong>Generate CertSecure Reports</strong> in the left sidebar.</div></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Run workflow</div><div class="step-desc">Click <strong>Run workflow</strong> (top right). Fill in the inputs — both are optional.</div></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">
+        <div class="step-title">Inputs</div>
+        <div class="step-desc" style="margin-top:6px;">
+          <strong>Client name</strong> — leave blank for all active clients, or enter exact name e.g. <code>Canadian Pacific Kansas City</code><br/><br/>
+          <strong>Report types</strong> — leave blank for all 4, or comma-separated e.g. <code>compliance_detail,engagement_detail</code>
+        </div>
+      </div></div>
+      <div class="step mb-0"><div class="step-num">5</div><div class="step-body"><div class="step-title">Download</div><div class="step-desc">Reports are committed to <code>reports/</code> when done. Download directly from GitHub.</div></div></div>
+    </div>
+  </div>
+
+  <!-- Data Files -->
+  <div class="sec-label">Data Files</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>File</th><th>Source</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>insureds.csv</code></td><td><span class="badge badge-blue">Evident API</span></td><td>One row per insured per client — name, email, compliance status, verification status, expiration</td></tr>
+        <tr><td><code>coverages.csv</code></td><td><span class="badge badge-blue">Evident API</span></td><td>One row per coverage per insured — type, policy number, insurer, effective/expiration dates</td></tr>
+        <tr><td><code>criteria.csv</code></td><td><span class="badge badge-blue">Evident API</span></td><td>Non-compliance reasons per insured</td></tr>
+        <tr><td><code>custom_fields.csv</code></td><td><span class="badge badge-blue">Evident API</span></td><td>Coverage-level policy JSON data</td></tr>
+        <tr><td><code>custom_properties.csv</code></td><td><span class="badge badge-blue">Evident /export</span></td><td>Whitelisted custom fields per insured (see below)</td></tr>
+        <tr><td><code>summaries.csv</code></td><td><span class="badge badge-blue">Evident API</span></td><td>One row per client — compliant, non-compliant, pending counts</td></tr>
+        <tr><td><code>engagement.csv</code></td><td><span class="badge badge-green">Google Sheets</span></td><td>Email events — sends, opens, clicks, bounces, deferrals (last 90 days)</td></tr>
+        <tr><td><code>sync_metadata.csv</code></td><td><span class="badge badge-navy">Generated</span></td><td>Tracks when each CSV last changed and last ran</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Custom Properties Whitelist -->
+  <div class="sec-label">Custom Properties Whitelist</div>
+  <div class="card">
+    <div class="card-header">Whitelisted Fields — <code>custom_properties.csv</code></div>
+    <p class="text-muted" style="margin-bottom:14px;">Only these 10 fields are written to <code>custom_properties.csv</code>. All other Evident custom fields are ignored. To change the whitelist, edit the <code>FIELD_WHITELIST</code> constant in <code>src/sync-custom-properties.js</code>.</p>
+    <div class="tag-list">
+      <span class="tag">contractNumber</span>
+      <span class="tag">notificationList</span>
+      <span class="tag">entityType</span>
+      <span class="tag">projectName</span>
+      <span class="tag">projectNumber</span>
+      <span class="tag">propertyLocation</span>
+      <span class="tag">tenantType</span>
+      <span class="tag">propertyManager</span>
+      <span class="tag">insuranceType</span>
+      <span class="tag">Latest Submission Date</span>
+    </div>
+  </div>
+
+  <!-- Client Configuration -->
+  <div class="sec-label">Client Configuration — <code>config/clients.json</code></div>
+  <div class="card">
+    <div class="card-header">Standard Entry</div>
+    <pre style="margin-bottom:0;"><code>{
+  "client_name":       "Canadian Pacific Kansas City",
+  "rp_common_name":    "cpkansascity",
+  "program_start_date": "2025-11-05",
+  "active":            true
+}</code></pre>
+  </div>
+  <div class="card">
+    <div class="card-header">Optional Per-Client Overrides</div>
+    <pre><code>{
+  "client_name":         "Gart Properties",
+  "rp_common_name":      "gartproperties",
+  "program_start_date":  "2024-09-01",
+  "active":              true,
+  "expiring_window":     60,
+  "engagement_window":   30,
+  "reports": {
+    "compliance_summary":  true,
+    "compliance_detail":   true,
+    "engagement_summary":  false,
+    "engagement_detail":   false
+  }
+}</code></pre>
+    <div class="table-wrap mb-0">
+      <table>
+        <thead><tr><th>Field</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>expiring_window</code></td><td><code>90</code></td><td>Days ahead for the Expiring Coverage sheet</td></tr>
+          <tr><td><code>engagement_window</code></td><td><code>60</code></td><td>Days back for NC + No Recent Engagement sheet</td></tr>
+          <tr><td><code>reports</code></td><td>all <code>true</code></td><td>Set any report type to <code>false</code> to skip it for this client</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GitHub Secrets -->
+  <div class="sec-label">GitHub Secrets</div>
+  <div class="secrets-grid">
+    <div class="card" style="margin-bottom:0;">
+      <div class="card-header">Evident API Keys</div>
+      <div class="table-wrap mb-0">
+        <table>
+          <thead><tr><th>Secret Name</th><th>Client</th></tr></thead>
+          <tbody>
+            <tr><td><code>EVIDENT_KEY_AGEQUIPMENT</code></td><td>A G Equipment Company</td></tr>
+            <tr><td><code>EVIDENT_KEY_ACTIONPLUMBING</code></td><td>Action Plumbing Construction</td></tr>
+            <tr><td><code>EVIDENT_KEY_BAUERFOUNDATION</code></td><td>Bauer Foundation Corp.</td></tr>
+            <tr><td><code>EVIDENT_KEY_CPKANSASCITY</code></td><td>Canadian Pacific Kansas City</td></tr>
+            <tr><td><code>EVIDENT_KEY_CAPITALROAD</code></td><td>Capital Railroad Contracting, Inc.</td></tr>
+            <tr><td><code>EVIDENT_KEY_EMMES</code></td><td>EMMES</td></tr>
+            <tr><td><code>EVIDENT_KEY_EMERYSAPPANDSONS</code></td><td>ESS Companies</td></tr>
+            <tr><td><code>EVIDENT_KEY_GARTPROPERTIES</code></td><td>Gart Properties</td></tr>
+            <tr><td><code>EVIDENT_KEY_KOLBGRADING</code></td><td>Kolb Grading</td></tr>
+            <tr><td><code>EVIDENT_KEY_MIZUHOBANK</code></td><td>Mizuho Bank</td></tr>
+            <tr><td><code>EVIDENT_KEY_MUSSELMANHALL</code></td><td>Musselman &amp; Hall Contractors, LLC</td></tr>
+            <tr><td><code>EVIDENT_KEY_PARAGONGEO</code></td><td>Paragon Geophysical Services, Inc.</td></tr>
+            <tr><td><code>EVIDENT_KEY_SCANDROLI</code></td><td>Scandroli Construction</td></tr>
+            <tr><td><code>EVIDENT_KEY_SKYLINE</code></td><td>Skyline Developers Construction LLC</td></tr>
+            <tr><td><code>EVIDENT_KEY_THEABBEYCOMPANY</code></td><td>The Abbey Management Company</td></tr>
+            <tr><td><code>EVIDENT_KEY_TRINITYCHEMICAL</code></td><td>Trinity Chemical Industries LLC</td></tr>
+            <tr><td><code>EVIDENT_KEY_UNITEDCOAL</code></td><td>United Coal Company LLC</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-header">Google Sheets</div>
+        <div class="table-wrap mb-0">
+          <table>
+            <thead><tr><th>Secret Name</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>GOOGLE_SERVICE_ACCOUNT_KEY</code></td><td>Full JSON key for the Google Cloud service account</td></tr>
+              <tr><td><code>GOOGLE_SHEET_ID</code></td><td>Google Sheet ID containing the Email Events tab</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="security-notice">
+        <strong>Security</strong><br/>
+        All API keys are stored as GitHub Secrets and never written to any file in this repo.
+        Branch protection is enabled on <code>main</code> — direct pushes are blocked except from
+        <code>github-actions[bot]</code>. Secret scanning is enabled. The <code>data/</code> folder
+        contains client compliance data — do not commit any file containing API keys, passwords,
+        or personal data outside the <code>data/</code> folder.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ── Footer ──────────────────────────────────────── -->
+<footer>
+  <span>HUB CertSecure — Serviced by HUB International &nbsp;·&nbsp; Internal Use Only</span>
+  <span>Questions? Contact Philip Irving</span>
+</footer>
+
+</body>
+</html>
