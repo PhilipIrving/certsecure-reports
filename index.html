@@ -1661,6 +1661,11 @@ const PDF_STYLES = `
   .fpct{width:36px;text-align:right;color:#5A6B7B;font-size:11px}
   .footer{margin-top:22px;padding-top:10px;border-top:1px solid #D1DCE8;display:flex;justify-content:space-between;font-size:9px;color:#94A3B8}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  @page{size:A4 portrait;margin:8mm}
+  @media print{
+    html,body{height:auto!important}
+    .page{transform-origin:top left}
+  }
 `;
 
 function getLogoSrc() {
@@ -1777,7 +1782,8 @@ body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:
 .footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
 .footer-right{text-align:right;white-space:nowrap}
 @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body>
+</style></head><body onload="(function(){var e=document.getElementById('cs-content');if(!e)return;var s=Math.min(1,820/e.scrollWidth,1100/e.scrollHeight);if(s<1){e.style.transform='scale('+s+')';e.style.transformOrigin='top left';e.style.width=(100/s)+'%';}})()">
+<div id="cs-content">
 
 <div class="page-hdr">
   <div>${logoTag}</div>
@@ -1890,7 +1896,7 @@ ${(() => {
       });
     });
   }
-  const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   if (!showNCReasons || !topNC.length) return '';
   return `<div class="sec-hdr"><div class="sec-lbl">Compliance Intelligence</div><div class="sec-line"></div></div>
@@ -1961,9 +1967,9 @@ ${(() => {
   <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel. API Retrieval Date: ${stamp}. Distribution outside of these parties is not permitted without written authorization.</div>
   <div class="footer-right">HUB CertSecure — Serviced by HUB International<br>${esc(selectedClient.name)}&nbsp;|&nbsp;Compliance Summary&nbsp;|&nbsp;${fd}&nbsp;|&nbsp;Confidential</div>
 </div>
+</div>
 </body></html>`;
 }
-
 function buildEngagementSummaryHTML(notifications, { reportDate }) {
   const fd = fmtDate(reportDate);
   const cutoff60 = new Date(); cutoff60.setDate(cutoff60.getDate() - 60);
@@ -2004,7 +2010,7 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
     ? `<img src="${logoSrcES}" style="height:36px;object-fit:contain">`
     : `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span><div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">SERVICED BY HUB</div></div>`;
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Engagement Summary</title><style>${PDF_STYLES}</style></head><body><div class="page">
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(selectedClient.name)} — Engagement Summary</title><style>${PDF_STYLES}</style></head><body onload="(function(){var e=document.getElementById('content');if(!e)return;var s=Math.min(1,820/e.scrollWidth,1100/e.scrollHeight);if(s<1){e.style.transform='scale('+s+')';e.style.transformOrigin='top left';e.style.width=(100/s)+'%';}})()" ><div class="page" id="content">
   <div class="hdr">
     <div>${logoTagES}</div>
     <div class="hdr-right"><div class="badge">Engagement Summary</div><div class="client-name">${esc(selectedClient.name)}</div><div class="rpt-date">Report Date: ${fd}</div></div>
