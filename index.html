@@ -470,6 +470,8 @@
               <option value="compliant">Compliant Only</option>
               <option value="pending">New / Pending Only</option>
             </select>
+            <div class="sec-div" id="cd-cf-hdr" style="display:none">Custom Fields</div>
+            <div class="cb-group" id="cd-cf-list"></div>
           </div>
         </div>
 
@@ -514,6 +516,8 @@
               <option value="30">Last 30 Days</option>
               <option value="90">Last 90 Days</option>
             </select>
+            <div class="sec-div" id="ed-cf-hdr" style="display:none">Custom Fields</div>
+            <div class="cb-group" id="ed-cf-list"></div>
           </div>
         </div>
 
@@ -599,11 +603,8 @@
 <script>
 // ──────────────────────────────────────────────
 // CLIENT CONFIGURATION
+// 'key' must EXACTLY match the 'client' column in your CSVs.
 // ──────────────────────────────────────────────
-// 'key' must match the value in the 'client' column of your CSVs.
-// Update keys here if they differ from your actual CSV values.
-
-// 'key' must EXACTLY match the 'client' column value in your CSVs.
 const CLIENTS = [
   { name: "A G Equipment Company",               key: "A G Equipment Company",               structure: "general"  },
   { name: "Canadian Pacific Kansas City",         key: "Canadian Pacific Kansas City",         structure: "general"  },
@@ -630,10 +631,197 @@ const STRUCT = {
 };
 
 // ──────────────────────────────────────────────
-// CSV COLUMN MAPPINGS — match actual column headers in your CSVs
+// PER-CLIENT CUSTOM FIELD CONFIG
+// on: true = checked by default; on: false = available but unchecked
+// Coverage flags (air, auto, gl, wc, etc.) are excluded entirely.
+// ──────────────────────────────────────────────
+const CLIENT_FIELD_CONFIG = {
+  "A G Equipment Company": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:true  },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+  ],
+  "Canadian Pacific Kansas City": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:true  },
+    { key:'contractNumber',         label:'Contract Number',           on:true  },
+    { key:'referenceId',            label:'Reference ID',              on:false },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Capital Railroad Contracting, Inc.": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Kolb Grading": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Mizuho Bank": [
+    { key:'ccgReference',           label:'CCG Reference',             on:true  },
+    { key:'loanName',               label:'Loan Name',                 on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Musselman & Hall Contractors, LLC": [
+    { key:'insuranceType',          label:'Insurance Type',            on:true  },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+  ],
+  "Paragon Geophysical Services, Inc.": [
+    { key:'insuranceType',          label:'Insurance Type',            on:true  },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Trinity Chemical Industries LLC": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'referenceId',            label:'Reference ID',              on:false },
+    { key:'ofCars',                 label:'# of Cars',                 on:false },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "United Coal Company LLC": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:true  },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Bauer Foundation Corp.": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:false },
+    { key:'projectName',            label:'Project Name',              on:true  },
+    { key:'projectNumber',          label:'Project Number',            on:true  },
+    { key:'insuranceType',          label:'Insurance Type',            on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Primary Contact Phone Number', label:'Phone Number',        on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "ESS Companies": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'jobDescription',         label:'Job Description',           on:true  },
+    { key:'jobNumber',              label:'Job Number',                on:true  },
+    { key:'jobStatus',              label:'Job Status',                on:true  },
+    { key:'subcontractNumber',      label:'Subcontract Number',        on:true  },
+    { key:'insuranceType',          label:'Insurance Type',            on:true  },
+    { key:'referenceId',            label:'Reference ID',              on:false },
+    { key:'projectSpecific',        label:'Project Specific',          on:false },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Scandroli Construction": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'projectName',            label:'Project Name',              on:true  },
+    { key:'projectId',              label:'Project ID',                on:true  },
+    { key:'projectStatus',          label:'Project Status',            on:true  },
+    { key:'referenceId',            label:'Reference ID',              on:false },
+    { key:'compOpsDate',            label:'Comp Ops Date',             on:false },
+    { key:'projectCompOps',         label:'Project Comp Ops',          on:false },
+    { key:'insuredId',              label:'Insured ID',                on:false },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Primary Contact Phone Number', label:'Phone Number',        on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Skyline Developers Construction LLC": [
+    { key:'projectName',            label:'Project Name',              on:true  },
+    { key:'referenceId',            label:'Reference ID',              on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "EMMES": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:true  },
+    { key:'propertyLocation',       label:'Property Location',         on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "Gart Properties": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'propertyLocation',       label:'Property Location',         on:true  },
+    { key:'propertyManager',        label:'Property Manager',          on:true  },
+    { key:'tenantType',             label:'Tenant Type',               on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+  "The Abbey Management Company": [
+    { key:'entityId',               label:'Entity ID',                 on:true  },
+    { key:'entityType',             label:'Entity Type',               on:true  },
+    { key:'propertyLocation',       label:'Property Location',         on:true  },
+    { key:'rsf',                    label:'Rentable Sq. Footage',      on:true  },
+    { key:'notes',                  label:'Notes',                     on:false },
+    { key:'email',                  label:'Alt Email',                 on:false },
+    { key:'email2',                 label:'Alt Email 2',               on:false },
+    { key:'verificationType',       label:'Verification Type',         on:false },
+    { key:'Latest Submission Date', label:'Latest Submission Date',    on:false },
+    { key:'Apt Suite or Unit',      label:'Apt/Suite/Unit',            on:false },
+    { key:'Zip code',               label:'Zip Code',                  on:false },
+  ],
+};
+
+// ──────────────────────────────────────────────
+// CSV COLUMN MAPPINGS
 // ──────────────────────────────────────────────
 const C = {
-  // insureds.csv
   client:        'client',
   entity_name:   'insured_name',
   insured_id:    'insured_id',
@@ -643,17 +831,14 @@ const C = {
   email:         'primary_contact_email',
   active:        'active',
   paused:        'paused',
-  // coverages.csv
   cov_client:    'client',
   coverage_type: 'coverage_type',
   exp_date:      'expiration_date',
-  // criteria.csv (NC reasons)
   crit_client:   'client',
   crit_name:     'insured_name',
   crit_email:    'primary_contact_email',
   overall_comp:  'overall_compliance',
   nc_reasons:    'non_compliance_reasons',
-  // engagement.csv (event-based: one row per email event)
   notif_client:  'Client',
   notif_email:   'Email',
   eng_type:      'Type',
@@ -661,14 +846,13 @@ const C = {
   subject:       'Subject',
 };
 
-// Engagement event type helpers
-const isEngSend    = n => n[C.eng_type] === 'send';
-const isEngOpen    = n => n[C.eng_type] === 'open';
-const isEngClick   = n => n[C.eng_type] === 'click';
-const isEngIssue   = n => ['hard_bounce','soft_bounce','reject','rejected','deferral','spam'].includes((n[C.eng_type]||'').toLowerCase());
+const isEngSend  = n => n[C.eng_type] === 'send';
+const isEngOpen  = n => n[C.eng_type] === 'open';
+const isEngClick = n => n[C.eng_type] === 'click';
+const isEngIssue = n => ['hard_bounce','soft_bounce','reject','rejected','deferral','spam'].includes((n[C.eng_type]||'').toLowerCase());
 
 // ──────────────────────────────────────────────
-// SETTINGS (stored in localStorage)
+// SETTINGS
 // ──────────────────────────────────────────────
 const DEFAULTS = {
   owner: 'PhilipIrving',
@@ -688,21 +872,19 @@ function getSettings() {
 
 function openSettings() {
   const s = getSettings();
-  document.getElementById('s-owner').value       = s.owner;
-  document.getElementById('s-repo').value        = s.repo;
-  document.getElementById('s-branch').value      = s.branch;
-  document.getElementById('s-pat').value         = s.pat;
-  document.getElementById('s-insureds').value    = s.insuredsPath;
-  document.getElementById('s-coverages').value   = s.coveragesPath;
-  document.getElementById('s-criteria').value    = s.criteriaPath;
-  document.getElementById('s-customprops').value = s.customPropsPath;
-  document.getElementById('s-notifications').value = s.notificationsPath;
+  document.getElementById('s-owner').value        = s.owner;
+  document.getElementById('s-repo').value         = s.repo;
+  document.getElementById('s-branch').value       = s.branch;
+  document.getElementById('s-pat').value          = s.pat;
+  document.getElementById('s-insureds').value     = s.insuredsPath;
+  document.getElementById('s-coverages').value    = s.coveragesPath;
+  document.getElementById('s-criteria').value     = s.criteriaPath;
+  document.getElementById('s-customprops').value  = s.customPropsPath;
+  document.getElementById('s-notifications').value= s.notificationsPath;
   document.getElementById('settings-overlay').classList.add('open');
 }
 
-function closeSettings() {
-  document.getElementById('settings-overlay').classList.remove('open');
-}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
 
 function saveSettings() {
   localStorage.setItem('cs-settings', JSON.stringify({
@@ -725,14 +907,13 @@ function saveSettings() {
 // ──────────────────────────────────────────────
 async function fetchCSV(path) {
   const { owner, repo, branch, pat } = getSettings();
-  // Use GitHub Contents API (supports private repos when PAT is provided)
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
   const headers = { 'Accept': 'application/vnd.github.v3.raw' };
   if (pat) headers['Authorization'] = `Bearer ${pat}`;
   const res = await fetch(url, { headers });
-  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in ⚙ Settings (needs "Contents" read permission).`);
-  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}. Check Settings → CSV paths.`);
-  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}). Check Settings.`);
+  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in \u2699 Settings.`);
+  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}. Check Settings \u2192 CSV paths.`);
+  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}).`);
   return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
 }
 
@@ -740,8 +921,7 @@ async function triggerRefresh() {
   const { owner, repo, pat } = getSettings();
   if (!pat) { toast('Add a GitHub PAT in Settings to use Refresh Data', 'error'); return; }
   const btn = document.getElementById('refresh-btn');
-  btn.textContent = '⟳ Syncing…';
-  btn.disabled = true;
+  btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
       method: 'POST',
@@ -749,14 +929,10 @@ async function triggerRefresh() {
       body: JSON.stringify({ ref: 'main' })
     });
     (res.ok || res.status === 204)
-      ? toast('Sync triggered — data will refresh in ~2 min', 'success')
+      ? toast('Sync triggered \u2014 data will refresh in ~2 min', 'success')
       : toast('Sync failed. Check your PAT in Settings.', 'error');
-  } catch(e) {
-    toast('Network error — could not trigger sync', 'error');
-  } finally {
-    btn.textContent = '↻ Refresh Data';
-    btn.disabled = false;
-  }
+  } catch(e) { toast('Network error \u2014 could not trigger sync', 'error'); }
+  finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
 }
 
 // ──────────────────────────────────────────────
@@ -766,21 +942,46 @@ let selectedClient = null;
 
 function renderGrids() {
   ['general','project','location'].forEach(struct => {
-    const grid = document.getElementById(`grid-${struct}`);
-    grid.innerHTML = CLIENTS.filter(c => c.structure === struct).map(c => `
-      <div class="client-card" id="cc-${c.key}" onclick="pickClient('${c.key}')">
-        <div class="client-name">${c.name}</div>
-        <span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span>
-      </div>
-    `).join('');
+    document.getElementById(`grid-${struct}`).innerHTML =
+      CLIENTS.filter(c => c.structure === struct).map(c =>
+        `<div class="client-card" id="cc-${c.key.replace(/[^a-z0-9]/gi,'_')}" onclick="pickClient('${c.key.replace(/'/g,"\\'").replace(/&/g,"\\x26")}')">
+          <div class="client-name">${c.name}</div>
+          <span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span>
+        </div>`
+      ).join('');
   });
 }
 
 function pickClient(key) {
   selectedClient = CLIENTS.find(c => c.key === key);
   document.querySelectorAll('.client-card').forEach(el => el.classList.remove('selected'));
-  document.getElementById(`cc-${key}`)?.classList.add('selected');
+  const safeKey = key.replace(/[^a-z0-9]/gi,'_');
+  document.getElementById(`cc-${safeKey}`)?.classList.add('selected');
+  updateCustomFieldsUI();
   setTimeout(() => goTo(2), 180);
+}
+
+function updateCustomFieldsUI() {
+  if (!selectedClient) return;
+  const fields = CLIENT_FIELD_CONFIG[selectedClient.key] || [];
+  ['cd','ed'].forEach(prefix => {
+    const hdr  = document.getElementById(`${prefix}-cf-hdr`);
+    const list = document.getElementById(`${prefix}-cf-list`);
+    if (!hdr || !list) return;
+    if (!fields.length) { hdr.style.display='none'; list.innerHTML=''; return; }
+    hdr.style.display = '';
+    list.innerHTML = fields.map(f =>
+      `<label class="cb-item"><input type="checkbox" id="${prefix}-cf-${f.key.replace(/[^a-z0-9]/gi,'_')}" ${f.on?'checked':''}> ${f.label}</label>`
+    ).join('');
+  });
+}
+
+function getCustomFields(prefix) {
+  const fields = CLIENT_FIELD_CONFIG[selectedClient?.key] || [];
+  return fields.filter(f => {
+    const el = document.getElementById(`${prefix}-cf-${f.key.replace(/[^a-z0-9]/gi,'_')}`);
+    return el && el.checked;
+  });
 }
 
 function goTo(n) {
@@ -789,25 +990,19 @@ function goTo(n) {
   if (n === 2 && selectedClient) {
     const s = STRUCT[selectedClient.structure];
     document.getElementById('banner-name').textContent   = selectedClient.name;
-    document.getElementById('banner-struct').textContent = `${s.label} — Shown by ${s.groupLabel}`;
+    document.getElementById('banner-struct').textContent = `${s.label} \u2014 Shown by ${s.groupLabel}`;
     document.getElementById('cd-entity-lbl').textContent = s.groupLabel + ' List';
-    if (!document.getElementById('g-date').value) {
+    if (!document.getElementById('g-date').value)
       document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
-    }
     updateGenBtn();
   }
 }
 
-function toggleReport(id) {
-  document.getElementById(`rc-${id}`).classList.toggle('on');
-  updateGenBtn();
-}
-
+function toggleReport(id) { document.getElementById(`rc-${id}`).classList.toggle('on'); updateGenBtn(); }
 function updateGenBtn() {
   const any = ['cs','cd','es','ed'].some(id => document.getElementById(`rc-${id}`)?.classList.contains('on'));
   document.getElementById('gen-btn').disabled = !any;
 }
-
 function setProgress(lbl, sub) {
   document.getElementById('prog-lbl').textContent = lbl;
   document.getElementById('prog-sub').textContent = sub;
@@ -822,41 +1017,39 @@ async function generate() {
   document.getElementById('gen-area').style.display  = 'block';
   document.getElementById('done-area').style.display = 'none';
   document.getElementById('err-area').style.display  = 'none';
-  document.getElementById('s3-title').textContent    = 'Generating Reports…';
+  document.getElementById('s3-title').textContent    = 'Generating Reports\u2026';
   document.getElementById('s3-sub').textContent      = 'Please wait while your reports are built';
 
   const on = id => document.getElementById(`rc-${id}`)?.classList.contains('on');
   const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
 
   try {
-    let insureds = [], coverages = [], criteria = [], customProps = [], notifications = [];
+    let insureds = [], coverages = [], criteria = [], notifications = [];
 
     if (E.cs || E.cd || E.ed) {
-      setProgress('Fetching compliance data…', `Loading ${s.insuredsPath}`);
+      setProgress('Fetching compliance data\u2026', `Loading ${s.insuredsPath}`);
       insureds = (await fetchCSV(s.insuredsPath)).filter(r => r[C.client] === selectedClient.key);
 
-      setProgress('Fetching custom properties…', `Loading ${s.customPropsPath}`);
+      setProgress('Fetching custom properties\u2026', `Loading ${s.customPropsPath}`);
       try {
-        const allProps = await fetchCSV(s.customPropsPath);
-        customProps = allProps.filter(r => r['client'] === selectedClient.key);
-        insureds = enrichInsureds(insureds, customProps);
-      } catch(e) { console.warn('custom_properties CSV skip:', e.message); }
+        const allProps = (await fetchCSV(s.customPropsPath)).filter(r => r['client'] === selectedClient.key);
+        insureds = enrichInsureds(insureds, allProps);
+      } catch(e) { console.warn('custom_properties skip:', e.message); }
     }
 
     if (E.cd) {
-      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`);
+      setProgress('Fetching coverage data\u2026', `Loading ${s.coveragesPath}`);
       try { coverages = (await fetchCSV(s.coveragesPath)).filter(r => r[C.cov_client] === selectedClient.key); }
-      catch(e) { console.warn('coverages CSV skip:', e.message); }
-
-      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`);
+      catch(e) { console.warn('coverages skip:', e.message); }
+      setProgress('Fetching NC reasons\u2026', `Loading ${s.criteriaPath}`);
       try { criteria = (await fetchCSV(s.criteriaPath)).filter(r => r[C.crit_client] === selectedClient.key); }
-      catch(e) { console.warn('criteria CSV skip:', e.message); }
+      catch(e) { console.warn('criteria skip:', e.message); }
     }
 
     if (E.es || E.ed) {
-      setProgress('Fetching engagement data…', `Loading ${s.notificationsPath}`);
+      setProgress('Fetching engagement data\u2026', `Loading ${s.notificationsPath}`);
       try { notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key); }
-      catch(e) { console.warn('notifications CSV skip:', e.message); }
+      catch(e) { console.warn('notifications skip:', e.message); }
     }
 
     const reportDate   = document.getElementById('g-date').value || today();
@@ -865,29 +1058,25 @@ async function generate() {
     const downloads    = [];
 
     if (E.cd) {
-      setProgress('Building Compliance Detail…', 'Generating Excel workbook');
+      setProgress('Building Compliance Detail\u2026', 'Generating Excel workbook');
       const wb = buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate });
-      downloads.push({ label:'Compliance Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Compliance Detail.xlsx` });
+      downloads.push({ label:'Compliance Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} \u2014 Compliance Detail.xlsx` });
     }
-
     if (E.ed) {
-      setProgress('Building Engagement Detail…', 'Generating Excel workbook');
+      setProgress('Building Engagement Detail\u2026', 'Generating Excel workbook');
       const wb = buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
-      downloads.push({ label:'Engagement Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Engagement Detail.xlsx` });
+      downloads.push({ label:'Engagement Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} \u2014 Engagement Detail.xlsx` });
     }
-
     if (E.cs) {
-      setProgress('Building Compliance Summary…', 'Generating PDF');
-      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, { reportDate }), filename:`${selectedClient.name} — Compliance Summary.pdf` });
+      setProgress('Building Compliance Summary\u2026', 'Generating PDF');
+      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, { reportDate }), filename:`${selectedClient.name} \u2014 Compliance Summary.pdf` });
     }
-
     if (E.es) {
-      setProgress('Building Engagement Summary…', 'Generating PDF');
-      downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate }), filename:`${selectedClient.name} — Engagement Summary.pdf` });
+      setProgress('Building Engagement Summary\u2026', 'Generating PDF');
+      downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate }), filename:`${selectedClient.name} \u2014 Engagement Summary.pdf` });
     }
 
     showDownloads(downloads);
-
   } catch(e) {
     console.error(e);
     document.getElementById('gen-area').style.display = 'none';
@@ -903,219 +1092,351 @@ function showDownloads(downloads) {
   document.getElementById('s3-title').textContent    = 'Reports Ready';
   document.getElementById('s3-sub').textContent      = `${downloads.length} report${downloads.length!==1?'s':''} generated`;
   window._dl = downloads;
-  document.getElementById('dl-grid').innerHTML = downloads.map((d,i) => `
-    <div class="dl-card">
-      <div class="dl-icon">${d.type==='excel'?'📊':'📄'}</div>
+  document.getElementById('dl-grid').innerHTML = downloads.map((d,i) =>
+    `<div class="dl-card">
+      <div class="dl-icon">${d.type==='excel'?'\u{1F4CA}':'\u{1F4C4}'}</div>
       <div class="dl-name">${d.label}</div>
       <button class="btn btn-primary" style="width:100%" onclick="dlFile(${i})">
-        ⬇ Download ${d.type==='excel'?'Excel':'PDF'}
+        \u2B07 Download ${d.type==='excel'?'Excel':'PDF'}
       </button>
-    </div>
-  `).join('');
+    </div>`
+  ).join('');
 }
 
 function dlFile(i) {
   const d = window._dl[i];
   if (d.type === 'excel') {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(d.blob);
-    a.download = d.filename;
-    a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(d.blob); a.download = d.filename; a.click();
   } else {
-    const w = window.open('', '_blank');
-    w.document.write(d.html);
-    w.document.close();
+    const w = window.open('', '_blank'); w.document.write(d.html); w.document.close();
     w.onload = () => { w.focus(); w.print(); };
   }
 }
 
 // ──────────────────────────────────────────────
-// ENRICH INSUREDS with custom properties
-// Builds lookup maps from custom_properties.csv
-// matching on primary_contact_email (lowercased)
+// ENRICH INSUREDS — collect ALL custom props per insured
 // ──────────────────────────────────────────────
 function enrichInsureds(insureds, customProps) {
-  const contractMap     = {};
-  const entityTypeMap   = {};
-  const notifListMap    = {};
-  const projectNameMap  = {};
-  const projectNumberMap= {};
-  const locationNameMap = {};
-
+  const customMap = {};
   for (const row of customProps) {
     const key = (row['contact_email'] || row['insured_name'] || '').trim().toLowerCase();
     if (!key || key === 'nan') continue;
-    const fn = (row['field_name'] || row['field_label'] || '').trim();
+    const fn = (row['field_name'] || '').trim();
     const fv = (row['field_value'] || '').trim();
-    if (!fv || fv === 'nan') continue;
-
-    if (fn === 'contractNumber'  && !(key in contractMap))       contractMap[key]      = fv;
-    if (fn === 'entityType'      && !(key in entityTypeMap))     entityTypeMap[key]    = fv;
-    if (fn === 'projectName'     && !(key in projectNameMap))    projectNameMap[key]   = fv;
-    if (fn === 'projectNumber'   && !(key in projectNumberMap))  projectNumberMap[key] = fv;
-    if (fn === 'locationName'    && !(key in locationNameMap))   locationNameMap[key]  = fv;
-    if (fn === 'notificationList' && !(key in notifListMap)) {
-      const lower = fv.toLowerCase();
-      if (!lower.includes('internalemail') && !lower.includes('paused'))
-        notifListMap[key] = fv;
-    }
+    if (!fn || !fv || fv === 'nan') continue;
+    if (!customMap[key]) customMap[key] = {};
+    if (!(fn in customMap[key])) customMap[key][fn] = fv;
   }
-
   return insureds.map(r => {
     const key = (r[C.email] || '').trim().toLowerCase();
+    const cp  = customMap[key] || {};
     return {
       ...r,
-      _contractNumber:   contractMap[key]     || '',
-      _entityType:       entityTypeMap[key]   || '',
-      _projectName:      projectNameMap[key]  || '',
-      _projectNumber:    projectNumberMap[key]|| '',
-      _locationName:     locationNameMap[key] || '',
-      _notificationList: notifListMap[key]    || '',
+      _custom:          cp,
+      _contractNumber:  cp['contractNumber']  || '',
+      _entityType:      cp['entityType']       || '',
+      _projectName:     cp['projectName']      || cp['jobDescription'] || '',
+      _projectNumber:   cp['projectNumber']    || cp['jobNumber']      || '',
+      _locationName:    cp['propertyLocation'] || '',
+      _notificationList:fmtNotifList(cp['notificationList'] || ''),
     };
   });
+}
+
+// ──────────────────────────────────────────────
+// EXCEL STYLE HELPERS — match CPKC standard
+// ──────────────────────────────────────────────
+const XL = {
+  NAVY:'2B3A52', BLUE:'3A7FC1', WHITE:'FFFFFF',
+  GREEN:'1A7F5A', GREEN_BG:'E6F5EF',
+  RED:'C0392B',   RED_BG:'FDF0EE',
+  AMBER:'C97A00', BLUE_BG:'E8F1FB',
+  BODY:'1A2030',  ALT:'F9FAFC',
+};
+
+function xs(o) {
+  const s = {};
+  if (o.bg)    s.fill = { patternType:'solid', fgColor:{ rgb:o.bg } };
+  s.font = { name:'Arial', sz:o.sz||10 };
+  if (o.color)  s.font.color = { rgb:o.color };
+  if (o.bold)   s.font.bold  = true;
+  if (o.italic) s.font.italic= true;
+  if (o.halign||o.valign||o.wrap) {
+    s.alignment = {};
+    if (o.halign) s.alignment.horizontal = o.halign;
+    if (o.valign) s.alignment.vertical   = o.valign;
+    if (o.wrap)   s.alignment.wrapText   = true;
+  }
+  return s;
+}
+const xsHdr  = (bg=XL.NAVY) => xs({ bg, color:XL.WHITE, bold:true, sz:10, halign:'left', valign:'center' });
+const xsData = (alt)         => xs({ bg:alt?XL.ALT:XL.WHITE, color:XL.BODY, sz:10 });
+function xsStatus(v, alt) {
+  const n = normStatus(v);
+  if (n==='compliant')     return xs({ bg:XL.GREEN_BG, color:XL.GREEN, bold:true, sz:10 });
+  if (n==='non_compliant') return xs({ bg:XL.RED_BG,   color:XL.RED,   bold:true, sz:10 });
+  return xs({ bg:XL.BLUE_BG, color:XL.BLUE, bold:true, sz:10 });
+}
+function xsDays(v, alt) {
+  const c = v<=7?XL.RED:v<=30?XL.AMBER:v<=60?XL.BLUE:XL.NAVY;
+  return xs({ bg:alt?XL.ALT:XL.WHITE, color:c, bold:true, sz:10, halign:'center' });
+}
+function xsIssue(v, alt) {
+  const t=(v||'').toLowerCase();
+  return (t==='hard_bounce'||t==='rejected'||t==='reject')
+    ? xs({ bg:XL.RED_BG, color:XL.RED, bold:true, sz:10 })
+    : xsData(alt);
+}
+
+// ──────────────────────────────────────────────
+// STYLED SHEET BUILDER
+// ──────────────────────────────────────────────
+function buildStyledSheet(wb, name, headers, rows, opts={}) {
+  const { hdrBg=XL.NAVY, styleCell, colWidths, wrapSet=new Set() } = opts;
+  const ws = {};
+  headers.forEach((h,ci) => {
+    ws[XLSX.utils.encode_cell({r:0,c:ci})] = { v:h, t:'s', s:xsHdr(hdrBg) };
+  });
+  rows.forEach((row,ri) => {
+    const alt = ri%2===0;
+    headers.forEach((h,ci) => {
+      const v   = row[h];
+      const isN = typeof v === 'number';
+      let s = styleCell ? styleCell(h,v,alt,row) : xsData(alt);
+      if (wrapSet.has(h)) s = {...s, alignment:{...(s.alignment||{}), wrapText:true, vertical:'top'}};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:ci})] = { v:v===null||v===undefined?'':v, t:isN?'n':'s', s };
+    });
+  });
+  ws['!ref']        = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}});
+  ws['!autofilter'] = { ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}}) };
+  if (colWidths) ws['!cols'] = colWidths.map(w=>({wch:w}));
+  ws['!rows'] = [{hpt:20}];
+  XLSX.utils.book_append_sheet(wb, ws, name);
+  return ws;
+}
+
+function buildSummarySheet(wb, shortN, clientN, stamp, metricsRows, sheetsRows) {
+  const ws = {};
+  ws['A1'] = { v:`${shortN} \u2014 Compliance Detail`,  t:'s', s:xs({color:XL.NAVY,bold:true,sz:18}) };
+  ws['A2'] = { v:clientN,                               t:'s', s:xs({color:XL.BLUE,sz:13}) };
+  ws['A3'] = { v:`API Retrieval Date: ${stamp}`,        t:'s', s:xs({color:'5A6480',sz:10,italic:true}) };
+  ['Metric','Count','% of Active'].forEach((h,ci) => {
+    ws[XLSX.utils.encode_cell({r:4,c:ci})] = {v:h,t:'s',s:xsHdr()};
+  });
+  metricsRows.forEach(([lbl,n,p],ri) => {
+    const alt=ri%2===0;
+    ws[XLSX.utils.encode_cell({r:5+ri,c:0})] = {v:lbl,t:'s',s:xsData(alt)};
+    ws[XLSX.utils.encode_cell({r:5+ri,c:1})] = {v:n,  t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+    ws[XLSX.utils.encode_cell({r:5+ri,c:2})] = {v:p||'\u2014',t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+  });
+  const sr = 5+metricsRows.length+1;
+  ['Sheet','Description'].forEach((h,ci)=>{ ws[XLSX.utils.encode_cell({r:sr,c:ci})]={v:h,t:'s',s:xsHdr()}; });
+  sheetsRows.forEach(([n,d],ri) => {
+    const alt=ri%2===0;
+    ws[XLSX.utils.encode_cell({r:sr+1+ri,c:0})]={v:n,t:'s',s:xsData(alt)};
+    ws[XLSX.utils.encode_cell({r:sr+1+ri,c:1})]={v:d,t:'s',s:xsData(alt)};
+  });
+  ws['!ref']  = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sr+sheetsRows.length,c:2}});
+  ws['!cols'] = [{wch:42},{wch:12},{wch:14}];
+  ws['!rows'] = [{hpt:30},{hpt:22},{hpt:16}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
 }
 
 // ──────────────────────────────────────────────
 // EXCEL BUILDERS
 // ──────────────────────────────────────────────
 function xlBlob(wb) {
-  const out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  const out = XLSX.write(wb, { bookType:'xlsx', type:'array', cellStyles:true });
   return new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
-function addSheet(wb, data, name, colWidths) {
-  if (!data.length) return;
-  const ws = XLSX.utils.json_to_sheet(data);
-  if (colWidths) ws['!cols'] = colWidths.map(w => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, ws, name);
+function shortName(n) {
+  if (n.includes('Kansas City'))     return 'CPKC';
+  if (n.includes('Capital Railroad'))return 'CRC';
+  if (n.includes('Musselman'))       return 'M\u0026H';
+  return n.split(' ')[0];
 }
 
 function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate }) {
-  const wb    = XLSX.utils.book_new();
-  const sl    = STRUCT[selectedClient.structure];
-  // Only count active, non-paused insureds
-  const active = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const wb     = XLSX.utils.book_new();
+  const sl     = STRUCT[selectedClient.structure];
+  const active = insureds.filter(r=>r[C.active]!=='false'&&r[C.paused]!=='true');
   const total  = active.length;
-  const comp   = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
-  const nc     = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
-  const newp   = total - comp - nc;
+  const comp   = active.filter(r=>normStatus(r[C.status])==='compliant').length;
+  const nc     = active.filter(r=>normStatus(r[C.status])==='non_compliant').length;
+  const newp   = total-comp-nc;
+  const stamp  = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+  const cfFields = getCustomFields('cd');
 
-  // Summary sheet
-  const summaryAOA = [
-    [`${selectedClient.name} — Compliance Detail`],
-    [selectedClient.name],
-    [`Report Date: ${fmtDate(reportDate)}`],
-    [`Data Retrieved: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
-    [],
-    ['Metric','Count','% of Active'],
-    ['Active Third-Parties', total, '100%'],
-    ['Compliant',    comp, pct(comp, total)],
-    ['Non-Compliant', nc,  pct(nc,   total)],
-    ['New / Pending', newp,pct(newp,  total)],
-  ];
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
-  wsSummary['!cols'] = [{wch:35},{wch:10},{wch:13}];
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+  const groupField = selectedClient.structure==='project' ?'_projectName'
+                   : selectedClient.structure==='location'?'_locationName'
+                   :                                       '_entityType';
+  const groupLabel = sl.groupLabel;
+  const isProj     = selectedClient.structure==='project';
+  const insuredById= {};
+  active.forEach(r=>{ if(r[C.insured_id]) insuredById[r[C.insured_id]]=r; });
 
-  // Entity List sheet — grouping column varies by client structure
-  if (document.getElementById('cd-entitylist').checked) {
-    const sl = STRUCT[selectedClient.structure];
-    // Determine which grouping field and label to use
-    const groupField = selectedClient.structure === 'project'  ? '_projectName'
-                     : selectedClient.structure === 'location' ? '_locationName'
-                     :                                           '_entityType';
-    const groupLabel = sl.groupLabel; // "Entity Type", "Project", or "Location"
+  // Summary
+  buildSummarySheet(wb, shortName(selectedClient.name), selectedClient.name, stamp,
+    [['Active Third-Parties',total,null],['Compliant',comp,pct(comp,total)],
+     ['Non-Compliant',nc,pct(nc,total)],['New',newp,pct(newp,total)]],
+    [[`${groupLabel} List`,`All active insureds sorted by ${groupLabel.toLowerCase()}`],
+     ['Expiring Coverage','Coverage expiring within 90 days'],
+     ['NC by Coverage & Criteria','Coverage NC counts and criteria side by side'],
+     ['Non-Compliance Reasons','Per-failure rows grouped by insured']]);
 
-    let rows = statusFilter !== 'all' ? active.filter(r => normStatus(r[C.status]) === statusFilter) : active;
-    // Sort by group then name for project/location clients
-    if (selectedClient.structure !== 'general') {
-      rows = [...rows].sort((a,b) => {
-        const ga = a[groupField]||'', gb = b[groupField]||'';
-        return ga.localeCompare(gb) || (a[C.entity_name]||'').localeCompare(b[C.entity_name]||'');
-      });
-    }
-    addSheet(wb, rows.map(r => {
-      const row = {
-        'Insured Name':        r[C.entity_name]        || '',
-        'Contract Number':     r._contractNumber        || '',
-        [groupLabel]:          r[groupField]            || '',
-      };
-      // Add Project Number column for subcontractor clients
-      if (selectedClient.structure === 'project') {
-        row['Project Number'] = r._projectNumber || '';
-      }
-      row['Compliance Status']   = fmtStatus(r[C.status]);
-      row['Verification Status'] = fmtVerif(r[C.verify_status]);
-      row['Next Expiration']     = r[C.next_exp]  || '';
-      row['Notification Email']  = fmtNotifList(r._notificationList) || r[C.email] || '';
-      return row;
-    }), `${groupLabel} List`, selectedClient.structure === 'project'
-      ? [40,20,28,16,18,22,16,40]
-      : [40,20,24,18,22,16,40]);
+  // Helper: build standard headers with optional custom fields
+  function makeHdrs(base, withProj=false) {
+    const h=[...base];
+    if(withProj&&isProj) h.splice(h.indexOf(groupLabel)+1,0,'Project Number');
+    cfFields.forEach(f=>{ if(!h.includes(f.label)) h.push(f.label); });
+    return h;
+  }
+  function addCF(row,r) { cfFields.forEach(f=>{ row[f.label]=r._custom?.[f.key]||''; }); return row; }
+
+  // Entity / Project / Location List
+  if (chk('cd-entitylist')) {
+    let rows = statusFilter!=='all'?active.filter(r=>normStatus(r[C.status])===statusFilter):active;
+    if(selectedClient.structure!=='general')
+      rows=[...rows].sort((a,b)=>(a[groupField]||'').localeCompare(b[groupField]||'')||(a[C.entity_name]||'').localeCompare(b[C.entity_name]||''));
+    const hdrs = makeHdrs(['Insured Name','Contract Number',groupLabel,'Compliance Status','Verification Status','Next Expiration','Notification Email'], true);
+    const sheetRows = rows.map(r => addCF({
+      'Insured Name':       r[C.entity_name]||'',
+      'Contract Number':    r._contractNumber||'',
+      [groupLabel]:         r[groupField]||'',
+      'Project Number':     r._projectNumber||'',
+      'Compliance Status':  fmtStatus(r[C.status]),
+      'Verification Status':fmtVerif(r[C.verify_status]),
+      'Next Expiration':    r[C.next_exp]||'',
+      'Notification Email': fmtNotifList(r._notificationList)||r[C.email]||'',
+    },r));
+    const wids=[40,20,28,18,22,16,40];
+    if(isProj) wids.splice(3,0,16);
+    cfFields.forEach(()=>wids.push(20));
+    buildStyledSheet(wb,`${groupLabel} List`,hdrs,sheetRows,{
+      colWidths:wids,
+      styleCell:(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt),
+    });
   }
 
-  // Expiring coverage — calculate days from expiration_date
-  if (document.getElementById('cd-expiring').checked && coverages.length) {
-    const insuredById = {};
-    active.forEach(r => { if (r[C.insured_id]) insuredById[r[C.insured_id]] = r; });
-    const rows = coverages
-      .map(r => ({ ...r, _days: daysUntilDate(r[C.exp_date]) }))
-      .filter(r => r._days !== null && r._days >= 0 && r._days <= 90)
-      .sort((a,b) => a._days - b._days);
-    addSheet(wb, rows.map(r => {
-      const ins = insuredById[r['insured_id']] || {};
-      return {
-        'Insured Name':    r['insured_name']         || '',
-        'Contract Number': ins._contractNumber        || '',
-        'Coverage Type':   fmtCoverage(r[C.coverage_type]),
-        'Expiration Date': r[C.exp_date]             || '',
-        'Days Until':      r._days,
-        'Insurer':         r['insurer']              || '',
-      };
-    }), 'Expiring Coverage', [40,20,32,16,12,40]);
+  // Expiring Coverage
+  if (chk('cd-expiring')&&coverages.length) {
+    const rows=coverages
+      .map(r=>({...r,_days:daysUntilDate(r[C.exp_date])}))
+      .filter(r=>r._days!==null&&r._days>=0&&r._days<=90)
+      .sort((a,b)=>a._days-b._days);
+    const base=['Insured Name','Contract Number'];
+    if(isProj){base.push('Project Name');base.push('Project Number');}
+    const hdrs=makeHdrs([...base,'Coverage Type','Expiration Date','Days Until','Status']);
+    const sheetRows=rows.map(r=>{
+      const ins=insuredById[r['insured_id']]||{};
+      return addCF({
+        'Insured Name':   r['insured_name']||'',
+        'Contract Number':ins._contractNumber||'',
+        'Project Name':   ins._projectName||'',
+        'Project Number': ins._projectNumber||'',
+        'Coverage Type':  fmtCoverage(r[C.coverage_type]),
+        'Expiration Date':r[C.exp_date]||'',
+        'Days Until':     r._days,
+        'Status':         fmtStatus(ins[C.status]||''),
+      },ins);
+    });
+    const wids=[40,20];
+    if(isProj){wids.push(28);wids.push(16);}
+    wids.push(30,16,12,18);
+    cfFields.forEach(()=>wids.push(20));
+    buildStyledSheet(wb,'Expiring Coverage',hdrs,sheetRows,{
+      colWidths:wids,
+      styleCell:(h,v,alt)=>{
+        if(h==='Status') return xsStatus(v,alt);
+        if(h==='Days Until'&&typeof v==='number') return xsDays(v,alt);
+        return xsData(alt);
+      },
+    });
   }
 
-  // NC by Coverage — parse from criteria non_compliance_reasons field
-  if (document.getElementById('cd-nccoverage').checked && criteria.length) {
-    const map = {};
-    criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
-      const reasons = (r[C.nc_reasons] || '').split(' | ');
-      reasons.forEach(reason => {
-        const match = reason.trim().match(/^([A-Z_]+):/);
-        if (match) { const t = fmtCoverage(match[1]); map[t] = (map[t]||0)+1; }
+  // NC by Coverage & Criteria (split layout)
+  if (chk('cd-nccoverage')&&criteria.length) {
+    const map={};
+    criteria.filter(r=>normStatus(r[C.overall_comp])==='non_compliant').forEach(r=>{
+      (r[C.nc_reasons]||'').split(' | ').forEach(p=>{
+        const m=p.trim().match(/^([A-Z_]+):/);
+        if(m){const t=fmtCoverage(m[1]);map[t]=(map[t]||0)+1;}
       });
     });
-    if (Object.keys(map).length) {
-      addSheet(wb, Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([ct,n]) => ({
-        'Coverage Type': ct, 'Non-Compliant Insureds': n, '% of Active': pct(n, total)
-      })), 'NC by Coverage & Criteria', [38,22,14]);
-    }
+    const critMap={};
+    criteria.forEach(r=>{
+      (r[C.nc_reasons]||'').split(' | ').forEach(p=>{
+        const ci=p.indexOf(':');if(ci<0)return;
+        const ct=fmtCoverage(p.slice(0,ci).trim()),reason=p.slice(ci+1).trim();
+        if(!reason)return;
+        const k=`${reason}||${ct}`;critMap[k]=(critMap[k]||0)+1;
+      });
+    });
+    const ws={};
+    ['Coverage Type','Non-Compliant Entities','% of Active'].forEach((h,ci)=>{
+      ws[XLSX.utils.encode_cell({r:0,c:ci})]={v:h,t:'s',s:xsHdr(XL.NAVY)};
+    });
+    ['Criteria','Coverage Type','Count','% of Total'].forEach((h,ci)=>{
+      ws[XLSX.utils.encode_cell({r:0,c:ci+4})]={v:h,t:'s',s:xsHdr(XL.BLUE)};
+    });
+    const leftR=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+    leftR.forEach(([ct,n],ri)=>{
+      const alt=ri%2===0;
+      ws[XLSX.utils.encode_cell({r:ri+1,c:0})]={v:ct,t:'s',s:xsData(alt)};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:1})]={v:n, t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:2})]={v:pct(n,total),t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+    });
+    const critTotal=Object.values(critMap).reduce((a,b)=>a+b,0)||1;
+    const critR=Object.entries(critMap).sort((a,b)=>b[1]-a[1]);
+    critR.forEach(([k,n],ri)=>{
+      const[reason,ct]=k.split('||'),alt=ri%2===0;
+      ws[XLSX.utils.encode_cell({r:ri+1,c:4})]={v:reason,t:'s',s:{...xsData(alt),alignment:{wrapText:true,vertical:'top'}}};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:5})]={v:ct,    t:'s',s:xsData(alt)};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:6})]={v:n,     t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+      ws[XLSX.utils.encode_cell({r:ri+1,c:7})]={v:pct(n,critTotal),t:'s',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+    });
+    const maxR=Math.max(leftR.length,critR.length);
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:7}});
+    ws['!cols']=[{wch:38},{wch:22},{wch:13},{wch:4},{wch:80},{wch:32},{wch:10},{wch:11}];
+    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:2}})};
+    ws['!rows']=[{hpt:20}];
+    XLSX.utils.book_append_sheet(wb,ws,'NC by Coverage & Criteria');
   }
 
-  // NC Reasons — from criteria.csv (separator is " | " with spaces)
-  if (document.getElementById('cd-ncreasons').checked && criteria.length) {
-    // Build insured_id → enriched insured lookup for contract number
-    const insuredById = {};
-    active.forEach(r => { if (r[C.insured_id]) insuredById[r[C.insured_id]] = r; });
-    const ncRows = [];
-    criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant' && r[C.nc_reasons]).forEach(r => {
-      const insured = insuredById[r['insured_id']] || {};
-      const reasons = (r[C.nc_reasons] || '').split(' | ').map(s => s.trim()).filter(Boolean);
-      reasons.forEach(reason => {
-        const colonIdx = reason.indexOf(':');
-        const covType = colonIdx > 0 ? fmtCoverage(reason.slice(0, colonIdx).trim()) : '';
-        const detail  = colonIdx > 0 ? reason.slice(colonIdx+1).trim() : reason;
-        ncRows.push({
-          'Insured Name':         r[C.crit_name]              || '',
-          'Contract Number':      insured._contractNumber      || '',
+  // Non-Compliance Reasons
+  if (chk('cd-ncreasons')&&criteria.length) {
+    const base=['Insured Name','Contract Number'];
+    if(isProj){base.push('Project Name');base.push('Project Number');}
+    const hdrs=makeHdrs([...base,'Compliance Status','Coverage Type','Non-Compliance Reason']);
+    const ncRows=[];
+    criteria.filter(r=>normStatus(r[C.overall_comp])==='non_compliant'&&r[C.nc_reasons]).forEach(r=>{
+      const ins=insuredById[r['insured_id']]||{};
+      (r[C.nc_reasons]||'').split(' | ').map(s=>s.trim()).filter(Boolean).forEach(part=>{
+        const ci=part.indexOf(':');
+        const ct=ci>0?fmtCoverage(part.slice(0,ci).trim()):'';
+        const reason=ci>0?part.slice(ci+1).trim():part;
+        ncRows.push(addCF({
+          'Insured Name':         r[C.crit_name]||'',
+          'Contract Number':      ins._contractNumber||'',
+          'Project Name':         ins._projectName||'',
+          'Project Number':       ins._projectNumber||'',
           'Compliance Status':    fmtStatus(r[C.overall_comp]),
-          'Coverage Type':        covType,
-          'Non-Compliance Reason':detail,
-          'Notification Email':   fmtNotifList(insured._notificationList) || r[C.crit_email] || '',
-        });
+          'Coverage Type':        ct,
+          'Non-Compliance Reason':reason,
+        },ins));
       });
     });
-    addSheet(wb, ncRows, 'Non-Compliance Reasons', [40,20,18,30,80,40]);
+    ncRows.sort((a,b)=>(a['Insured Name']||'').localeCompare(b['Insured Name']||''));
+    const wids=[40,20];
+    if(isProj){wids.push(28);wids.push(16);}
+    wids.push(18,30,80);
+    cfFields.forEach(()=>wids.push(20));
+    buildStyledSheet(wb,'Non-Compliance Reasons',hdrs,ncRows,{
+      colWidths:wids,
+      wrapSet:new Set(['Non-Compliance Reason']),
+      styleCell:(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt),
+    });
   }
 
   return wb;
@@ -1123,89 +1444,98 @@ function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, 
 
 function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate }) {
   const wb     = XLSX.utils.book_new();
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - engWindow);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-engWindow);
+  const active = insureds.filter(r=>r[C.active]!=='false'&&r[C.paused]!=='true');
+  const stamp  = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+  const cfFields = getCustomFields('ed');
+  const sl     = STRUCT[selectedClient.structure];
+  const groupField = selectedClient.structure==='project'?'_projectName'
+                   : selectedClient.structure==='location'?'_locationName'
+                   :                                       '_entityType';
+  const groupLabel = sl.groupLabel;
+  const isProj     = selectedClient.structure==='project';
 
-  // Event-based engagement — each row is one email event
-  const sentEmails    = new Set(notifications.filter(isEngSend).map(n => n[C.notif_email]).filter(Boolean));
-  const openedEmails  = new Set(notifications.filter(isEngOpen).map(n => n[C.notif_email]).filter(Boolean));
-  const clickedEmails = new Set(notifications.filter(isEngClick).map(n => n[C.notif_email]).filter(Boolean));
-  const issueEmails   = new Set(notifications.filter(isEngIssue).map(n => n[C.notif_email]).filter(Boolean));
-  const totalSent     = sentEmails.size;
-  const active        = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const sentEmails   = new Set(notifications.filter(isEngSend).map(n=>n[C.notif_email]).filter(Boolean));
+  const openedEmails = new Set(notifications.filter(isEngOpen).map(n=>n[C.notif_email]).filter(Boolean));
+  const clickedEmails= new Set(notifications.filter(isEngClick).map(n=>n[C.notif_email]).filter(Boolean));
+  const issueEmails  = new Set(notifications.filter(isEngIssue).map(n=>n[C.notif_email]).filter(Boolean));
 
-  const summaryAOA = [
-    [`${selectedClient.name} — Engagement Detail`],
-    [selectedClient.name],
-    [`Report Date: ${fmtDate(reportDate)}`],
-    [`Engagement Window: Last ${engWindow} Days`],
-    [],
-    ['Metric','Count'],
-    ['Emails in Program (unique)', totalSent],
-    ['Opened',          openedEmails.size],
-    ['Clicked',         clickedEmails.size],
-    ['Delivery Issues', issueEmails.size],
-  ];
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
-  wsSummary['!cols'] = [{wch:32},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+  // Summary sheet
+  const ws0={};
+  ws0['A1']={v:`${shortName(selectedClient.name)} \u2014 Engagement Detail`,t:'s',s:xs({color:XL.NAVY,bold:true,sz:18})};
+  ws0['A2']={v:selectedClient.name,t:'s',s:xs({color:XL.BLUE,sz:13})};
+  ws0['A3']={v:`API Retrieval Date: ${stamp}`,t:'s',s:xs({color:'5A6480',sz:10,italic:true})};
+  ws0['A4']={v:`Engagement Window: Last ${engWindow} Days`,t:'s',s:xs({color:'5A6480',sz:10,italic:true})};
+  ['Metric','Count'].forEach((h,ci)=>{ws0[XLSX.utils.encode_cell({r:5,c:ci})]={v:h,t:'s',s:xsHdr()};});
+  [['Emails in Program (unique)',sentEmails.size],['Opened',openedEmails.size],
+   ['Clicked',clickedEmails.size],['Delivery Issues',issueEmails.size]].forEach(([l,n],ri)=>{
+    const alt=ri%2===0;
+    ws0[XLSX.utils.encode_cell({r:6+ri,c:0})]={v:l,t:'s',s:xsData(alt)};
+    ws0[XLSX.utils.encode_cell({r:6+ri,c:1})]={v:n,t:'n',s:{...xsData(alt),alignment:{horizontal:'right'}}};
+  });
+  ws0['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:9,c:1}});
+  ws0['!cols']=[{wch:36},{wch:12}];
+  ws0['!rows']=[{hpt:30},{hpt:22},{hpt:16}];
+  XLSX.utils.book_append_sheet(wb,ws0,'Summary');
 
-  const sl = STRUCT[selectedClient.structure];
-  const groupField = selectedClient.structure === 'project'  ? '_projectName'
-                   : selectedClient.structure === 'location' ? '_locationName'
-                   :                                           '_entityType';
-  const eRow = r => {
-    const row = {
-      'Insured Name':        r[C.entity_name]           || '',
-      'Contract Number':     r._contractNumber           || '',
-      [sl.groupLabel]:       r[groupField]               || '',
+  // Helper builders
+  function makeHdrs() {
+    const h=['Insured Name','Contract Number',groupLabel];
+    if(isProj) h.push('Project Number');
+    cfFields.forEach(f=>{ if(!h.includes(f.label)) h.push(f.label); });
+    h.push('Compliance Status','Verification Status','Notification Email','Next Expiration');
+    return h;
+  }
+  function makeRow(r) {
+    const row={
+      'Insured Name':       r[C.entity_name]||'',
+      'Contract Number':    r._contractNumber||'',
+      [groupLabel]:         r[groupField]||'',
+      'Project Number':     r._projectNumber||'',
+      'Compliance Status':  fmtStatus(r[C.status]),
+      'Verification Status':fmtVerif(r[C.verify_status]),
+      'Notification Email': fmtNotifList(r._notificationList)||r[C.email]||'',
+      'Next Expiration':    r[C.next_exp]||'',
     };
-    if (selectedClient.structure === 'project') row['Project Number'] = r._projectNumber || '';
-    row['Compliance Status']   = fmtStatus(r[C.status]);
-    row['Verification Status'] = fmtVerif(r[C.verify_status]);
-    row['Notification Email']  = fmtNotifList(r._notificationList) || r[C.email] || '';
-    row['Next Expiration']     = r[C.next_exp] || '';
+    cfFields.forEach(f=>{ row[f.label]=r._custom?.[f.key]||''; });
     return row;
-  };
-  const eCols = selectedClient.structure === 'project' ? [40,20,28,16,18,22,40,16] : [40,20,24,18,22,40,16];
-
-  // No COI on File — insureds whose email has never sent anything
-  if (document.getElementById('ed-nocoi').checked) {
-    addSheet(wb, active.filter(r => {
-      const em = r[C.email]; return !em || !sentEmails.has(em);
-    }).map(eRow), 'No COIs on File', eCols);
   }
-
-  // No engagement since go-live — never opened or clicked
-  if (document.getElementById('ed-noeng').checked) {
-    addSheet(wb, active.filter(r => {
-      const em = r[C.email];
-      return !em || (!openedEmails.has(em) && !clickedEmails.has(em));
-    }).map(eRow), 'No Engagement Since Go-Live', eCols);
+  function makeWids() {
+    const w=[40,20,28]; if(isProj) w.push(16);
+    cfFields.forEach(()=>w.push(20));
+    w.push(18,22,40,16); return w;
   }
+  const sc=(h,v,alt)=>h==='Compliance Status'?xsStatus(v,alt):xsData(alt);
 
-  // NC + no recent engagement
-  if (document.getElementById('ed-ncnoeng').checked) {
-    const recentOpen = new Set(
-      notifications.filter(n => isEngOpen(n) && new Date(n[C.sent_at]) >= cutoff).map(n => n[C.notif_email]).filter(Boolean)
-    );
-    addSheet(wb, active.filter(r => {
-      return normStatus(r[C.status]) === 'non_compliant' && (!r[C.email] || !recentOpen.has(r[C.email]));
-    }).map(eRow), `NC + No ${engWindow}-Day Engagement`, eCols);
+  if(chk('ed-nocoi')) {
+    const rows=active.filter(r=>{const em=r[C.email];return !em||!sentEmails.has(em);}).map(makeRow);
+    if(rows.length) buildStyledSheet(wb,'No COIs on File',makeHdrs(),rows,{colWidths:makeWids(),styleCell:sc});
   }
-
-  // Undeliverable emails
-  if (document.getElementById('ed-undel').checked) {
-    addSheet(wb, notifications.filter(isEngIssue).map(n => ({
-      'Email':      n[C.notif_email] || '',
-      'Issue Type': n[C.eng_type]    || '',
-      'Date':       n[C.sent_at]     || '',
-      'Subject':    n[C.subject]     || '',
-    })), 'Undeliverable Emails', [40,16,24,70]);
+  if(chk('ed-noeng')) {
+    const rows=active.filter(r=>{const em=r[C.email];return !em||(!openedEmails.has(em)&&!clickedEmails.has(em));}).map(makeRow);
+    if(rows.length) buildStyledSheet(wb,'No Engagement Since Go-Live',makeHdrs(),rows,{colWidths:makeWids(),hdrBg:XL.RED,styleCell:sc});
+  }
+  if(chk('ed-ncnoeng')) {
+    const recentOpen=new Set(notifications.filter(n=>isEngOpen(n)&&new Date(n[C.sent_at])>=cutoff).map(n=>n[C.notif_email]).filter(Boolean));
+    const rows=active.filter(r=>normStatus(r[C.status])==='non_compliant'&&(!r[C.email]||!recentOpen.has(r[C.email]))).map(makeRow);
+    if(rows.length) buildStyledSheet(wb,`NC + No ${engWindow}-Day Engagement`,makeHdrs(),rows,{colWidths:makeWids(),hdrBg:XL.RED,styleCell:sc});
+  }
+  if(chk('ed-undel')) {
+    const hdrs=['Email','Issue Type','Date','Subject'];
+    const rows=notifications.filter(isEngIssue).map(n=>({
+      'Email':      n[C.notif_email]||'',
+      'Issue Type': n[C.eng_type]||'',
+      'Date':       n[C.sent_at]||'',
+      'Subject':    n[C.subject]||'',
+    }));
+    if(rows.length) buildStyledSheet(wb,'Undeliverable Emails',hdrs,rows,{
+      colWidths:[40,16,26,80],
+      styleCell:(h,v,alt)=>h==='Issue Type'?xsIssue(v,alt):xsData(alt),
+    });
   }
 
   return wb;
 }
-
 // ──────────────────────────────────────────────
 // PDF HTML BUILDERS
 // Both PDFs open in a new tab → browser Print dialog
