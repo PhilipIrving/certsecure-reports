@@ -357,19 +357,24 @@
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">CSV File Paths (in your repo)</div>
 
     <div class="form-grp">
-      <label class="form-lbl">Insureds / Parties CSV</label>
+      <label class="form-lbl">Insureds CSV</label>
       <input type="text" id="s-insureds" placeholder="data/insureds.csv">
-      <div class="form-hint">Main compliance data — entity names, status, expiration dates</div>
+      <div class="form-hint">Main compliance data — insured names, status, expiration</div>
     </div>
     <div class="form-grp">
-      <label class="form-lbl">Requirements / Coverage CSV</label>
-      <input type="text" id="s-requirements" placeholder="data/requirements.csv">
-      <div class="form-hint">Per-coverage compliance data — used for NC by Coverage and Expiring Coverage sheets</div>
+      <label class="form-lbl">Coverages CSV</label>
+      <input type="text" id="s-coverages" placeholder="data/coverages.csv">
+      <div class="form-hint">Per-coverage data — used for Expiring Coverage sheet</div>
     </div>
     <div class="form-grp">
-      <label class="form-lbl">Notifications / Engagement CSV</label>
-      <input type="text" id="s-notifications" placeholder="data/notifications.csv">
-      <div class="form-hint">Email engagement data — used for all Engagement reports</div>
+      <label class="form-lbl">Criteria CSV</label>
+      <input type="text" id="s-criteria" placeholder="data/criteria.csv">
+      <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Engagement CSV</label>
+      <input type="text" id="s-notifications" placeholder="data/engagement.csv">
+      <div class="form-hint">Email event data — used for all Engagement reports</div>
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
@@ -592,63 +597,69 @@
 // 'key' must match the value in the 'client' column of your CSVs.
 // Update keys here if they differ from your actual CSV values.
 
+// 'key' must EXACTLY match the 'client' column value in your CSVs.
 const CLIENTS = [
-  { name: "A G Equipment",                      key: "agequipment",        structure: "general"  },
-  { name: "Canadian Pacific Kansas City",        key: "cpkansascity",       structure: "general"  },
-  { name: "Capital Railroad Contracting, Inc.",  key: "capitalrailroad",    structure: "general"  },
-  { name: "Kolb Grading",                        key: "kolbgrading",        structure: "general"  },
-  { name: "Mizuho Bank",                         key: "mizuhobank",         structure: "general"  },
-  { name: "Musselman & Hall Contractors, LLC",   key: "musselmanhall",      structure: "general"  },
-  { name: "Paragon Geophysical Services, Inc.",  key: "paragongeophysical", structure: "general"  },
-  { name: "Trinity Chemical Industries LLC",     key: "trinitychemical",    structure: "general"  },
-  { name: "United Coal Company LLC",             key: "unitedcoal",         structure: "general"  },
-  { name: "BAUER Foundation Corp.",              key: "bauer",              structure: "project"  },
-  { name: "ESS Companies",                       key: "esscompanies",       structure: "project"  },
-  { name: "Scandroli Construction",              key: "scandroli",          structure: "project"  },
-  { name: "Skyline Developers Construction LLC", key: "skylinedevelopers",  structure: "project"  },
-  { name: "EMMES",                               key: "emmes",              structure: "location" },
-  { name: "Gart Properties",                     key: "gartproperties",     structure: "location" },
-  { name: "The Abbey Management Company",        key: "theabbeycompany",    structure: "location" },
+  { name: "A G Equipment Company",               key: "A G Equipment Company",               structure: "general"  },
+  { name: "Canadian Pacific Kansas City",         key: "Canadian Pacific Kansas City",         structure: "general"  },
+  { name: "Capital Railroad Contracting, Inc.",   key: "Capital Railroad Contracting, Inc.",   structure: "general"  },
+  { name: "Kolb Grading",                         key: "Kolb Grading",                         structure: "general"  },
+  { name: "Mizuho Bank",                          key: "Mizuho Bank",                          structure: "general"  },
+  { name: "Musselman & Hall Contractors, LLC",    key: "Musselman & Hall Contractors, LLC",    structure: "general"  },
+  { name: "Paragon Geophysical Services, Inc.",   key: "Paragon Geophysical Services, Inc.",   structure: "general"  },
+  { name: "Trinity Chemical Industries LLC",      key: "Trinity Chemical Industries LLC",      structure: "general"  },
+  { name: "United Coal Company LLC",              key: "United Coal Company LLC",              structure: "general"  },
+  { name: "Bauer Foundation Corp.",               key: "Bauer Foundation Corp.",               structure: "project"  },
+  { name: "ESS Companies",                        key: "ESS Companies",                        structure: "project"  },
+  { name: "Scandroli Construction",               key: "Scandroli Construction",               structure: "project"  },
+  { name: "Skyline Developers Construction LLC",  key: "Skyline Developers Construction LLC",  structure: "project"  },
+  { name: "EMMES",                                key: "EMMES",                                structure: "location" },
+  { name: "Gart Properties",                      key: "Gart Properties",                      structure: "location" },
+  { name: "The Abbey Management Company",         key: "The Abbey Management Company",         structure: "location" },
 ];
 
 const STRUCT = {
-  general:  { label: "General",        groupCol: "entity_type",   groupLabel: "Entity Type", badgeClass: "badge-general"  },
-  project:  { label: "Subcontractors", groupCol: "project_name",  groupLabel: "Project",     badgeClass: "badge-project"  },
-  location: { label: "Tenants",        groupCol: "location_name", groupLabel: "Location",    badgeClass: "badge-location" },
+  general:  { label: "General",        groupLabel: "Entity Type", badgeClass: "badge-general"  },
+  project:  { label: "Subcontractors", groupLabel: "Project",     badgeClass: "badge-project"  },
+  location: { label: "Tenants",        groupLabel: "Location",    badgeClass: "badge-location" },
 };
 
 // ──────────────────────────────────────────────
-// CSV COLUMN MAPPINGS
-// These must match the actual column headers in your CSV files.
-// Update here if your CSVs use different names.
+// CSV COLUMN MAPPINGS — match actual column headers in your CSVs
 // ──────────────────────────────────────────────
 const C = {
   // insureds.csv
   client:        'client',
-  entity_name:   'display_name',
-  contract_num:  'contract_number',
-  entity_type:   'party_type',
-  project_name:  'project_name',
-  location_name: 'location_name',
+  entity_name:   'insured_name',
+  insured_id:    'insured_id',
   status:        'compliance_status',
   verify_status: 'verification_status',
   next_exp:      'next_expiration',
-  email:         'contact_email',
-  has_coi:       'has_coi',
-  // requirements.csv
+  email:         'primary_contact_email',
+  active:        'active',
+  paused:        'paused',
+  // coverages.csv
+  cov_client:    'client',
   coverage_type: 'coverage_type',
-  nc_reason:     'non_compliance_reason',
   exp_date:      'expiration_date',
-  days_until:    'days_until_expiration',
-  // notifications.csv
-  notif_email:   'email_address',
-  notif_client:  'client',
-  issue_type:    'issue_type',
-  sent_at:       'sent_at',
-  subject:       'subject',
-  opened:        'opened',
-  clicked:       'clicked',
+  // criteria.csv (NC reasons)
+  crit_client:   'client',
+  crit_name:     'insured_name',
+  crit_email:    'primary_contact_email',
+  overall_comp:  'overall_compliance',
+  nc_reasons:    'non_compliance_reasons',
+  // engagement.csv (event-based: one row per email event)
+  notif_client:  'Client',
+  notif_email:   'Email',
+  eng_type:      'Type',
+  sent_at:       'Date',
+  subject:       'Subject',
 };
+
+// Engagement event type helpers
+const isEngSend    = n => n[C.eng_type] === 'send';
+const isEngOpen    = n => n[C.eng_type] === 'open';
+const isEngClick   = n => n[C.eng_type] === 'click';
+const isEngIssue   = n => ['hard_bounce','soft_bounce','reject','rejected','deferral','spam'].includes((n[C.eng_type]||'').toLowerCase());
 
 // ──────────────────────────────────────────────
 // SETTINGS (stored in localStorage)
@@ -659,8 +670,9 @@ const DEFAULTS = {
   branch:'main',
   pat:   '',
   insuredsPath:     'data/insureds.csv',
-  requirementsPath: 'data/requirements.csv',
-  notificationsPath:'data/notifications.csv',
+  coveragesPath:    'data/coverages.csv',
+  criteriaPath:     'data/criteria.csv',
+  notificationsPath:'data/engagement.csv',
 };
 
 function getSettings() {
@@ -674,7 +686,8 @@ function openSettings() {
   document.getElementById('s-branch').value      = s.branch;
   document.getElementById('s-pat').value         = s.pat;
   document.getElementById('s-insureds').value    = s.insuredsPath;
-  document.getElementById('s-requirements').value= s.requirementsPath;
+  document.getElementById('s-coverages').value   = s.coveragesPath;
+  document.getElementById('s-criteria').value    = s.criteriaPath;
   document.getElementById('s-notifications').value = s.notificationsPath;
   document.getElementById('settings-overlay').classList.add('open');
 }
@@ -690,7 +703,8 @@ function saveSettings() {
     branch:           document.getElementById('s-branch').value.trim() || 'main',
     pat:              document.getElementById('s-pat').value.trim(),
     insuredsPath:     document.getElementById('s-insureds').value.trim(),
-    requirementsPath: document.getElementById('s-requirements').value.trim(),
+    coveragesPath:    document.getElementById('s-coverages').value.trim(),
+    criteriaPath:     document.getElementById('s-criteria').value.trim(),
     notificationsPath:document.getElementById('s-notifications').value.trim(),
   }));
   closeSettings();
@@ -701,10 +715,15 @@ function saveSettings() {
 // DATA LOADING
 // ──────────────────────────────────────────────
 async function fetchCSV(path) {
-  const { owner, repo, branch } = getSettings();
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}). Check Settings → repo path.`);
+  const { owner, repo, branch, pat } = getSettings();
+  // Use GitHub Contents API (supports private repos when PAT is provided)
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  const headers = { 'Accept': 'application/vnd.github.v3.raw' };
+  if (pat) headers['Authorization'] = `Bearer ${pat}`;
+  const res = await fetch(url, { headers });
+  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in ⚙ Settings (needs "Contents" read permission).`);
+  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}. Check Settings → CSV paths.`);
+  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}). Check Settings.`);
   return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
 }
 
@@ -801,7 +820,7 @@ async function generate() {
   const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
 
   try {
-    let insureds = [], requirements = [], notifications = [];
+    let insureds = [], coverages = [], criteria = [], notifications = [];
 
     if (E.cs || E.cd || E.ed) {
       setProgress('Fetching compliance data…', `Loading ${s.insuredsPath}`);
@@ -809,17 +828,19 @@ async function generate() {
     }
 
     if (E.cd) {
-      setProgress('Fetching coverage data…', `Loading ${s.requirementsPath}`);
-      try {
-        requirements = (await fetchCSV(s.requirementsPath)).filter(r => r[C.client] === selectedClient.key);
-      } catch(e) { console.warn('requirements CSV skip:', e.message); }
+      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`);
+      try { coverages = (await fetchCSV(s.coveragesPath)).filter(r => r[C.cov_client] === selectedClient.key); }
+      catch(e) { console.warn('coverages CSV skip:', e.message); }
+
+      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`);
+      try { criteria = (await fetchCSV(s.criteriaPath)).filter(r => r[C.crit_client] === selectedClient.key); }
+      catch(e) { console.warn('criteria CSV skip:', e.message); }
     }
 
     if (E.es || E.ed) {
       setProgress('Fetching engagement data…', `Loading ${s.notificationsPath}`);
-      try {
-        notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key);
-      } catch(e) { console.warn('notifications CSV skip:', e.message); }
+      try { notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key); }
+      catch(e) { console.warn('notifications CSV skip:', e.message); }
     }
 
     const reportDate   = document.getElementById('g-date').value || today();
@@ -829,19 +850,19 @@ async function generate() {
 
     if (E.cd) {
       setProgress('Building Compliance Detail…', 'Generating Excel workbook');
-      const wb   = buildComplianceDetailXL(insureds, requirements, { statusFilter, reportDate });
+      const wb = buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate });
       downloads.push({ label:'Compliance Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Compliance Detail.xlsx` });
     }
 
     if (E.ed) {
       setProgress('Building Engagement Detail…', 'Generating Excel workbook');
-      const wb   = buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
+      const wb = buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
       downloads.push({ label:'Engagement Detail', type:'excel', blob: xlBlob(wb), filename:`${selectedClient.name} — Engagement Detail.xlsx` });
     }
 
     if (E.cs) {
       setProgress('Building Compliance Summary…', 'Generating PDF');
-      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, { reportDate }), filename:`${selectedClient.name} — Compliance Summary.pdf` });
+      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, { reportDate }), filename:`${selectedClient.name} — Compliance Summary.pdf` });
     }
 
     if (E.es) {
@@ -907,85 +928,99 @@ function addSheet(wb, data, name, colWidths) {
   XLSX.utils.book_append_sheet(wb, ws, name);
 }
 
-function buildComplianceDetailXL(insureds, requirements, { statusFilter, reportDate }) {
+function buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate }) {
   const wb    = XLSX.utils.book_new();
   const sl    = STRUCT[selectedClient.structure];
-  const total = insureds.length;
-  const comp  = insureds.filter(r => normStatus(r[C.status]) === 'compliant').length;
-  const nc    = insureds.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
-  const newp  = insureds.filter(r => normStatus(r[C.status]) === 'pending').length;
-  const coi   = insureds.filter(r => isTruthy(r[C.has_coi])).length;
+  // Only count active, non-paused insureds
+  const active = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const total  = active.length;
+  const comp   = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
+  const nc     = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+  const newp   = total - comp - nc;
 
   // Summary sheet
   const summaryAOA = [
     [`${selectedClient.name} — Compliance Detail`],
     [selectedClient.name],
-    [`API Retrieval Date: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
+    [`Report Date: ${fmtDate(reportDate)}`],
+    [`Data Retrieved: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
     [],
     ['Metric','Count','% of Active'],
     ['Active Third-Parties', total, '100%'],
     ['Compliant',    comp, pct(comp, total)],
     ['Non-Compliant', nc,  pct(nc,   total)],
     ['New / Pending', newp,pct(newp,  total)],
-    [],
-    ['COI on File',    coi,       pct(coi,       total)],
-    ['No COI on File', total-coi, pct(total-coi, total)],
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
   wsSummary['!cols'] = [{wch:35},{wch:10},{wch:13}];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-  // Entity list sheet
+  // Insured List sheet
   if (document.getElementById('cd-entitylist').checked) {
-    const gCol = sl.groupCol;
-    let rows = statusFilter !== 'all' ? insureds.filter(r => normStatus(r[C.status]) === statusFilter) : insureds;
+    let rows = statusFilter !== 'all' ? active.filter(r => normStatus(r[C.status]) === statusFilter) : active;
     addSheet(wb, rows.map(r => ({
-      'Entity Name':         r[C.entity_name]   || '',
-      'Contract Number':     r[C.contract_num]  || '',
-      [sl.groupLabel]:       r[gCol]            || '',
+      'Insured Name':        r[C.entity_name]   || '',
+      'Insured ID':          r[C.insured_id]    || '',
       'Compliance Status':   fmtStatus(r[C.status]),
       'Verification Status': r[C.verify_status] || '',
       'Next Expiration':     r[C.next_exp]      || '',
       'Notification Email':  r[C.email]         || '',
-    })), `${sl.groupLabel} List`, [35,18,28,18,22,16,30]);
+    })), 'Insured List', [40,36,18,22,16,36]);
   }
 
-  // Expiring coverage
-  if (document.getElementById('cd-expiring').checked && requirements.length) {
-    const rows = requirements
-      .filter(r => r[C.exp_date] && Number(r[C.days_until]) < 90)
-      .sort((a,b) => (Number(a[C.days_until])||999) - (Number(b[C.days_until])||999));
+  // Expiring coverage — calculate days from expiration_date
+  if (document.getElementById('cd-expiring').checked && coverages.length) {
+    const today = new Date();
+    const rows = coverages
+      .map(r => ({ ...r, _days: daysUntilDate(r[C.exp_date]) }))
+      .filter(r => r._days !== null && r._days >= 0 && r._days <= 90)
+      .sort((a,b) => a._days - b._days);
     addSheet(wb, rows.map(r => ({
-      'Entity Name':    r[C.entity_name]  || '',
-      'Contract Number':r[C.contract_num] || '',
-      'Coverage Type':  r[C.coverage_type]|| '',
-      'Expiration Date':r[C.exp_date]     || '',
-      'Days Until':     r[C.days_until]   || '',
-      'Status':         fmtStatus(r[C.status]),
-    })), 'Expiring Coverage', [35,18,30,16,12,16]);
+      'Insured Name':   r[C.entity_name]   || r['insured_name'] || '',
+      'Coverage Type':  fmtCoverage(r[C.coverage_type]),
+      'Expiration Date':r[C.exp_date]      || '',
+      'Days Until':     r._days,
+      'Insurer':        r['insurer']        || '',
+    })), 'Expiring Coverage', [40,32,16,12,40]);
   }
 
-  // NC by Coverage
-  if (document.getElementById('cd-nccoverage').checked && requirements.length) {
+  // NC by Coverage — parse from criteria non_compliance_reasons field
+  if (document.getElementById('cd-nccoverage').checked && criteria.length) {
     const map = {};
-    requirements.filter(r => normStatus(r[C.status]) === 'non_compliant')
-      .forEach(r => { const t = r[C.coverage_type]||'Unknown'; map[t] = (map[t]||0)+1; });
-    addSheet(wb, Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([ct,n]) => ({
-      'Coverage Type': ct, 'Non-Compliant Entities': n, '% of Active': pct(n, total)
-    })), 'NC by Coverage & Criteria', [35,22,14]);
+    criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
+      const reasons = (r[C.nc_reasons] || '').split(' | ');
+      reasons.forEach(reason => {
+        const match = reason.trim().match(/^([A-Z_]+):/);
+        if (match) { const t = fmtCoverage(match[1]); map[t] = (map[t]||0)+1; }
+      });
+    });
+    if (Object.keys(map).length) {
+      addSheet(wb, Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([ct,n]) => ({
+        'Coverage Type': ct, 'Non-Compliant Insureds': n, '% of Active': pct(n, total)
+      })), 'NC by Coverage & Criteria', [38,22,14]);
+    }
   }
 
-  // NC Reasons
-  if (document.getElementById('cd-ncreasons').checked && requirements.length) {
-    addSheet(wb, requirements
-      .filter(r => normStatus(r[C.status]) === 'non_compliant' && r[C.nc_reason])
-      .map(r => ({
-        'Entity Name':          r[C.entity_name]   || '',
-        'Contract Number':      r[C.contract_num]  || '',
-        'Compliance Status':    fmtStatus(r[C.status]),
-        'Coverage Type':        r[C.coverage_type] || '',
-        'Non-Compliant Reason': r[C.nc_reason]     || '',
-      })), 'Non-Compliance Reasons', [35,18,18,30,80]);
+  // NC Reasons — from criteria.csv (separator is " | " with spaces)
+  if (document.getElementById('cd-ncreasons').checked && criteria.length) {
+    const ncRows = [];
+    criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant' && r[C.nc_reasons]).forEach(r => {
+      const reasons = (r[C.nc_reasons] || '').split(' | ').map(s => s.trim()).filter(Boolean);
+      reasons.forEach(reason => {
+        const colonIdx = reason.indexOf(':');
+        const covType = colonIdx > 0 ? fmtCoverage(reason.slice(0, colonIdx).trim()) : '';
+        const detail  = colonIdx > 0 ? reason.slice(colonIdx+1).trim() : reason;
+        ncRows.push({
+          'Insured Name':         r[C.crit_name]  || '',
+          'Compliance Status':    fmtStatus(r[C.overall_comp]),
+          'Verification Status':  r['verification_status'] || '',
+          'Coverage Type':        covType,
+          'Non-Compliance Reason':detail,
+          'Notification Email':   r[C.crit_email] || '',
+        });
+      });
+    });
+    addSheet(wb, ncRows, 'Non-Compliance Reasons', [40,18,22,30,80,36]);
   }
 
   return wb;
@@ -994,65 +1029,73 @@ function buildComplianceDetailXL(insureds, requirements, { statusFilter, reportD
 function buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate }) {
   const wb     = XLSX.utils.book_new();
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - engWindow);
-  const uniqEmails  = new Set(notifications.map(n => n[C.notif_email]).filter(Boolean));
-  const totalSent   = uniqEmails.size;
-  const openedCount = new Set(notifications.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).size;
-  const clickedCount= new Set(notifications.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).size;
-  const issueCount  = new Set(notifications.filter(n => n[C.issue_type]).map(n => n[C.notif_email])).size;
-  const noCOI       = insureds.filter(r => !isTruthy(r[C.has_coi])).length;
+
+  // Event-based engagement — each row is one email event
+  const sentEmails    = new Set(notifications.filter(isEngSend).map(n => n[C.notif_email]).filter(Boolean));
+  const openedEmails  = new Set(notifications.filter(isEngOpen).map(n => n[C.notif_email]).filter(Boolean));
+  const clickedEmails = new Set(notifications.filter(isEngClick).map(n => n[C.notif_email]).filter(Boolean));
+  const issueEmails   = new Set(notifications.filter(isEngIssue).map(n => n[C.notif_email]).filter(Boolean));
+  const totalSent     = sentEmails.size;
+  const active        = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
 
   const summaryAOA = [
     [`${selectedClient.name} — Engagement Detail`],
     [selectedClient.name],
-    [`API Retrieval Date: ${new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})}`],
-    [`Data Range: Last ${engWindow} Days`],
+    [`Report Date: ${fmtDate(reportDate)}`],
+    [`Engagement Window: Last ${engWindow} Days`],
     [],
     ['Metric','Count'],
-    ['Emails Sent (Unique)', totalSent],
-    ['Opened',  openedCount],
-    ['Clicked', clickedCount],
-    ['Delivery Issues', issueCount],
-    [],
-    ['No COI on File', noCOI],
+    ['Emails in Program (unique)', totalSent],
+    ['Opened',          openedEmails.size],
+    ['Clicked',         clickedEmails.size],
+    ['Delivery Issues', issueEmails.size],
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryAOA);
-  wsSummary['!cols'] = [{wch:30},{wch:10}];
+  wsSummary['!cols'] = [{wch:32},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   const eRow = r => ({
-    'Entity Name':         r[C.entity_name]   || '',
-    'Contract Number':     r[C.contract_num]  || '',
+    'Insured Name':        r[C.entity_name]   || '',
     'Compliance Status':   fmtStatus(r[C.status]),
     'Verification Status': r[C.verify_status] || '',
     'Notification Email':  r[C.email]         || '',
     'Next Expiration':     r[C.next_exp]      || '',
   });
-  const eCols = [35,18,18,22,30,16];
+  const eCols = [40,18,22,36,16];
 
-  if (document.getElementById('ed-nocoi').checked)
-    addSheet(wb, insureds.filter(r => !isTruthy(r[C.has_coi])).map(eRow), 'No COIs on File', eCols);
-
-  if (document.getElementById('ed-noeng').checked) {
-    const engaged = new Set(notifications.map(n => n[C.notif_email]).filter(Boolean));
-    addSheet(wb, insureds.filter(r => { const em = r[C.email]; return !em || !engaged.has(em); }).map(eRow),
-      'No Engagement Since Go-Live', eCols);
+  // No COI on File — insureds whose email has never sent anything
+  if (document.getElementById('ed-nocoi').checked) {
+    addSheet(wb, active.filter(r => {
+      const em = r[C.email]; return !em || !sentEmails.has(em);
+    }).map(eRow), 'No COIs on File', eCols);
   }
 
+  // No engagement since go-live — never opened or clicked
+  if (document.getElementById('ed-noeng').checked) {
+    addSheet(wb, active.filter(r => {
+      const em = r[C.email];
+      return !em || (!openedEmails.has(em) && !clickedEmails.has(em));
+    }).map(eRow), 'No Engagement Since Go-Live', eCols);
+  }
+
+  // NC + no recent engagement
   if (document.getElementById('ed-ncnoeng').checked) {
-    const recent = new Set(notifications.filter(n => n[C.sent_at] && new Date(n[C.sent_at]) >= cutoff).map(n => n[C.notif_email]).filter(Boolean));
-    addSheet(wb, insureds.filter(r => {
-      return normStatus(r[C.status]) === 'non_compliant' && (!r[C.email] || !recent.has(r[C.email]));
+    const recentOpen = new Set(
+      notifications.filter(n => isEngOpen(n) && new Date(n[C.sent_at]) >= cutoff).map(n => n[C.notif_email]).filter(Boolean)
+    );
+    addSheet(wb, active.filter(r => {
+      return normStatus(r[C.status]) === 'non_compliant' && (!r[C.email] || !recentOpen.has(r[C.email]));
     }).map(eRow), `NC + No ${engWindow}-Day Engagement`, eCols);
   }
 
+  // Undeliverable emails
   if (document.getElementById('ed-undel').checked) {
-    addSheet(wb, notifications.filter(n => n[C.issue_type]).map(n => ({
-      'Email':           n[C.notif_email]  || '',
-      'Contract Number': n[C.contract_num] || '',
-      'Issue Type':      n[C.issue_type]   || '',
-      'Date':            n[C.sent_at]      || '',
-      'Subject':         n[C.subject]      || '',
-    })), 'Undeliverable Emails', [40,18,16,24,60]);
+    addSheet(wb, notifications.filter(isEngIssue).map(n => ({
+      'Email':      n[C.notif_email] || '',
+      'Issue Type': n[C.eng_type]    || '',
+      'Date':       n[C.sent_at]     || '',
+      'Subject':    n[C.subject]     || '',
+    })), 'Undeliverable Emails', [40,16,24,70]);
   }
 
   return wb;
@@ -1117,20 +1160,16 @@ function logoHTML() {
           <div style="font-size:8px;color:#94A3B8;letter-spacing:.1em;text-transform:uppercase;margin-top:3px">SERVICED BY HUB</div>`;
 }
 
-function buildComplianceSummaryHTML(insureds, { reportDate }) {
-  const total = insureds.length;
-  const comp  = cnt(insureds, r => normStatus(r[C.status]) === 'compliant');
-  const nc    = cnt(insureds, r => normStatus(r[C.status]) === 'non_compliant');
-  const newp  = cnt(insureds, r => normStatus(r[C.status]) === 'pending');
-  const coi   = cnt(insureds, r => isTruthy(r[C.has_coi]));
-  const noCOI = total - coi;
-  const noCOI_NC   = cnt(insureds, r => !isTruthy(r[C.has_coi]) && normStatus(r[C.status]) === 'non_compliant');
-  const noCOI_New  = cnt(insureds, r => !isTruthy(r[C.has_coi]) && normStatus(r[C.status]) === 'pending');
-  const noCOI_Comp = noCOI - noCOI_NC - noCOI_New;
-  const exp7  = cnt(insureds, r => expiringSoon(r[C.next_exp], 7));
-  const exp30 = cnt(insureds, r => expiringSoon(r[C.next_exp], 30));
-  const exp60 = cnt(insureds, r => expiringSoon(r[C.next_exp], 60));
-  const exp90 = cnt(insureds, r => expiringSoon(r[C.next_exp], 90));
+function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
+  const active = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const total = active.length;
+  const comp  = cnt(active, r => normStatus(r[C.status]) === 'compliant');
+  const nc    = cnt(active, r => normStatus(r[C.status]) === 'non_compliant');
+  const newp  = total - comp - nc;
+  const exp7  = cnt(coverages, r => expiringSoon(r[C.exp_date], 7));
+  const exp30 = cnt(coverages, r => expiringSoon(r[C.exp_date], 30));
+  const exp60 = cnt(coverages, r => expiringSoon(r[C.exp_date], 60));
+  const exp90 = cnt(coverages, r => expiringSoon(r[C.exp_date], 90));
   const fd    = fmtDate(reportDate);
 
   const showKPI      = chk('cs-kpi');
@@ -1158,39 +1197,24 @@ function buildComplianceSummaryHTML(insureds, { reportDate }) {
     ${showBreakdown ? `<div class="bcard"><div class="bcard-title">Compliance Status</div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#16A34A"></span>Compliant</div><div class="bval">${comp.toLocaleString()} (${pct(comp,total)})</div></div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>Non-Compliant</div><div class="bval">${nc.toLocaleString()} (${pct(nc,total)})</div></div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#EA580C"></span>New</div><div class="bval">${newp.toLocaleString()} (${pct(newp,total)})</div></div>
+      <div class="brow"><div class="blbl"><span class="dot" style="background:#EA580C"></span>New / Pending</div><div class="bval">${newp.toLocaleString()} (${pct(newp,total)})</div></div>
     </div>` : '<div></div>'}
-    ${showCOI ? `<div class="bcard"><div class="bcard-title">COI Submission Status</div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#3872B8"></span>COI on File</div><div class="bval">${coi.toLocaleString()} (${pct(coi,total)})</div></div>
-      <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>No COI on File</div><div class="bval">${noCOI.toLocaleString()} (${pct(noCOI,total)})</div></div>
-    </div>` : '<div></div>'}
+    <div></div>
   </div>` : ''}
-  ${(showNoCOI||showExpiring) ? `
-  <div class="sec-hdr"><div class="sec-title">Additional Program Data</div></div>
-  <div class="two-col">
-    ${showNoCOI ? `<div class="bcard"><div class="bcard-title">No COI on File — Breakdown</div>
-      <div class="brow"><div class="blbl">Non-Compliant</div><div class="bval">${noCOI_NC.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
-      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_NC,noCOI)}%;background:#DC2626"></div></div>
-      <div class="brow" style="margin-top:6px"><div class="blbl">Pending / New</div><div class="bval">${noCOI_New.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
-      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_New,noCOI)}%;background:#EA580C"></div></div>
-      <div class="brow" style="margin-top:6px"><div class="blbl">Compliant (no COI record)</div><div class="bval">${noCOI_Comp.toLocaleString()} / ${noCOI.toLocaleString()}</div></div>
-      <div class="bar"><div class="bar-fill" style="width:${barPct(noCOI_Comp,noCOI)}%;background:#16A34A"></div></div>
-    </div>` : '<div></div>'}
-    ${showExpiring ? `<div class="bcard"><div class="bcard-title">Expiring Coverage</div>
-      <div class="exp-grid">
-        <div class="exp-card"><div class="exp-days">7 Days</div><div class="exp-val">${exp7}</div><div class="exp-lbl">entities</div></div>
-        <div class="exp-card"><div class="exp-days">30 Days</div><div class="exp-val" style="color:#EA580C">${exp30}</div><div class="exp-lbl">entities</div></div>
-        <div class="exp-card"><div class="exp-days">60 Days</div><div class="exp-val">${exp60}</div><div class="exp-lbl">entities</div></div>
-        <div class="exp-card"><div class="exp-days">90 Days</div><div class="exp-val">${exp90}</div><div class="exp-lbl">entities</div></div>
-      </div>
-      <table class="stbl">
-        <tr><td>Total Compliant Entities</td><td>${comp}</td></tr>
-        <tr><td>Expiring within 30 days</td><td>${exp30} (${pct(exp30,comp)})</td></tr>
-        <tr><td>Expiring within 60 days</td><td>${exp60} (${pct(exp60,comp)})</td></tr>
-        <tr><td>Expiring within 90 days</td><td>${exp90} (${pct(exp90,comp)})</td></tr>
-      </table>
-    </div>` : '<div></div>'}
-  </div>` : ''}
+  ${showExpiring ? `
+  <div class="sec-hdr"><div class="sec-title">Expiring Coverage</div></div>
+  <div class="exp-grid">
+    <div class="exp-card"><div class="exp-days">7 Days</div><div class="exp-val" style="color:#DC2626">${exp7}</div><div class="exp-lbl">coverages</div></div>
+    <div class="exp-card"><div class="exp-days">30 Days</div><div class="exp-val" style="color:#EA580C">${exp30}</div><div class="exp-lbl">coverages</div></div>
+    <div class="exp-card"><div class="exp-days">60 Days</div><div class="exp-val">${exp60}</div><div class="exp-lbl">coverages</div></div>
+    <div class="exp-card"><div class="exp-days">90 Days</div><div class="exp-val">${exp90}</div><div class="exp-lbl">coverages</div></div>
+  </div>
+  <table class="stbl">
+    <tr><td>Total Compliant Insureds</td><td>${comp}</td></tr>
+    <tr><td>Coverages expiring within 30 days</td><td>${exp30}</td></tr>
+    <tr><td>Coverages expiring within 60 days</td><td>${exp60}</td></tr>
+    <tr><td>Coverages expiring within 90 days</td><td>${exp90}</td></tr>
+  </table>` : ''}
   <div class="footer">
     <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel.</span>
     <span>HUB CertSecure — Serviced by HUB International | ${esc(selectedClient.name)} | Compliance Summary | ${fd}</span>
@@ -1201,28 +1225,29 @@ function buildComplianceSummaryHTML(insureds, { reportDate }) {
 function buildEngagementSummaryHTML(notifications, { reportDate }) {
   const fd = fmtDate(reportDate);
   const cutoff60 = new Date(); cutoff60.setDate(cutoff60.getDate() - 60);
-  const uniq  = arr => [...new Set(arr.filter(Boolean))];
+  const uniq = arr => [...new Set(arr.filter(Boolean))];
 
-  const allEmails   = uniq(notifications.map(n => n[C.notif_email]));
-  const totalSent   = allEmails.length;
-  const opened      = uniq(notifications.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).length;
-  const clicked     = uniq(notifications.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).length;
-  const issues      = uniq(notifications.filter(n => n[C.issue_type]).map(n => n[C.notif_email])).length;
+  // Event-based: derive metrics from Type column
+  const sentEmails  = uniq(notifications.filter(isEngSend).map(n => n[C.notif_email]));
+  const totalSent   = sentEmails.length;
+  const opened      = uniq(notifications.filter(isEngOpen).map(n => n[C.notif_email])).length;
+  const clicked     = uniq(notifications.filter(isEngClick).map(n => n[C.notif_email])).length;
+  const issues      = uniq(notifications.filter(isEngIssue).map(n => n[C.notif_email])).length;
   const noIssue     = totalSent - issues;
   const notOpened   = totalSent - opened;
 
-  // Issue breakdown
+  // Issue breakdown by type
   const iMap = {};
-  notifications.filter(n => n[C.issue_type]).forEach(n => {
-    const t = n[C.issue_type]; if (!iMap[t]) iMap[t] = new Set(); iMap[t].add(n[C.notif_email]);
+  notifications.filter(isEngIssue).forEach(n => {
+    const t = n[C.eng_type]||''; if (!iMap[t]) iMap[t] = new Set(); iMap[t].add(n[C.notif_email]);
   });
-  const SEV = { 'Hard Bounce':'crit','hard_bounce':'crit','Rejected':'crit','rejected':'crit' };
+  const SEV = { 'hard_bounce':'crit','rejected':'crit','reject':'crit' };
 
-  // 60-day
+  // 60-day window
   const n60    = notifications.filter(n => n[C.sent_at] && new Date(n[C.sent_at]) >= cutoff60);
-  const sent60 = uniq(n60.map(n => n[C.notif_email])).length;
-  const open60 = uniq(n60.filter(n => isTruthy(n[C.opened])).map(n => n[C.notif_email])).length;
-  const clk60  = uniq(n60.filter(n => isTruthy(n[C.clicked])).map(n => n[C.notif_email])).length;
+  const sent60 = uniq(n60.filter(isEngSend).map(n => n[C.notif_email])).length;
+  const open60 = uniq(n60.filter(isEngOpen).map(n => n[C.notif_email])).length;
+  const clk60  = uniq(n60.filter(isEngClick).map(n => n[C.notif_email])).length;
 
   const showKPI     = chk('es-kpi');
   const showOpen    = chk('es-openrate');
@@ -1307,6 +1332,16 @@ function fmtStatus(s) {
   if (n==='non_compliant') return 'Non-Compliant';
   if (n==='pending') return 'New';
   return s||'';
+}
+function fmtCoverage(s) {
+  // Convert SNAKE_CASE coverage type to Title Case
+  if (!s) return '';
+  return s.replace(/_/g,' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+function daysUntilDate(ds) {
+  if (!ds) return null;
+  const d = new Date(ds); if (isNaN(d)) return null;
+  return Math.round((d - new Date()) / 86400000);
 }
 function isTruthy(v) {
   if (!v) return false;
