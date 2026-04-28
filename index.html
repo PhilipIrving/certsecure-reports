@@ -329,7 +329,7 @@
   <div class="header-right">
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
-    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.03</span>
+    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.04</span>
   </div>
 </header>
 
@@ -449,6 +449,9 @@
               <label class="cb-item"><input type="checkbox" id="cs-coi" checked> COI Submission Status</label>
               <label class="cb-item"><input type="checkbox" id="cs-nocoi" checked> No COI on File — Breakdown</label>
               <label class="cb-item"><input type="checkbox" id="cs-expiring" checked> Expiring Coverage (7 / 30 / 60 / 90 days)</label>
+              <label class="cb-item"><input type="checkbox" id="cs-ncreasons" checked> Top Non-Compliance Reasons</label>
+              <label class="cb-item"><input type="checkbox" id="cs-criteriadist" checked> Insured Criteria Breakdown (NC insureds by # of criteria failures)</label>
+              <label class="cb-item"><input type="checkbox" id="cs-coveragedist" checked> Insured Coverage Breakdown (NC insureds by # of coverage failures)</label>
             </div>
           </div>
         </div>
@@ -496,6 +499,8 @@
               <label class="cb-item"><input type="checkbox" id="es-delivery" checked> Deliverability Status</label>
               <label class="cb-item"><input type="checkbox" id="es-issues" checked> Delivery Issue Breakdown (Hard Bounce, Rejected, etc.)</label>
               <label class="cb-item"><input type="checkbox" id="es-60day" checked> 60-Day Activity Window &amp; Funnel</label>
+              <label class="cb-item"><input type="checkbox" id="es-nceng" checked> NC Insured Engagement Rate</label>
+              <label class="cb-item"><input type="checkbox" id="es-topsubjects"> Top Email Subjects by Open Rate</label>
             </div>
           </div>
         </div>
@@ -869,10 +874,10 @@ function pickClient(key) {
   updateCustomFieldsUI();
   setTimeout(() => {
     goTo(2);
-    // Auto-expand Compliance Detail and Engagement Detail so custom fields are visible
-    ['cd','ed'].forEach(id => {
+    // Deselect all report cards — user picks fresh each time
+    ['cs','cd','es','ed'].forEach(id => {
       const card = document.getElementById(`rc-${id}`);
-      if (card && !card.classList.contains('on')) card.classList.add('on');
+      if (card) card.classList.remove('on');
     });
     updateGenBtn();
   }, 180);
@@ -958,11 +963,11 @@ async function generate() {
       } catch(e) { console.warn('custom_properties skip:', e.message); }
     }
 
-    if (E.cd) {
-      setProgress('Fetching coverage data\u2026', `Loading ${s.coveragesPath}`);
+    if (E.cd || E.cs) {
+      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`);
       try { coverages = (await fetchCSV(s.coveragesPath)).filter(r => r[C.cov_client] === selectedClient.key); }
       catch(e) { console.warn('coverages skip:', e.message); }
-      setProgress('Fetching NC reasons\u2026', `Loading ${s.criteriaPath}`);
+      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`);
       try { criteria = (await fetchCSV(s.criteriaPath)).filter(r => r[C.crit_client] === selectedClient.key); }
       catch(e) { console.warn('criteria skip:', e.message); }
     }
@@ -990,7 +995,7 @@ async function generate() {
     }
     if (E.cs) {
       setProgress('Building Compliance Summary\u2026', 'Generating PDF');
-      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, { reportDate }), filename:`${selectedClient.name} \u2014 Compliance Summary.pdf` });
+      downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, criteria, { reportDate }), filename:`${selectedClient.name} \u2014 Compliance Summary.pdf` });
     }
     if (E.es) {
       setProgress('Building Engagement Summary\u2026', 'Generating PDF');
@@ -1678,7 +1683,11 @@ function donutCSS(segments, size=100) {
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:conic-gradient(${stops.join(',')});-webkit-mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);mask:radial-gradient(circle,transparent ${hole}px,black ${hole}px);flex-shrink:0"></div>`;
 }
 
-function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
+function buildComplianceSummaryHTML(insureds, coverages, criteria, { reportDate }) {
+  // Attach NC reasons from criteria to each insured for distribution charts
+  const ncByInsured = {};
+  criteria.forEach(r => { if (r[C.insured_id]) ncByInsured[r[C.insured_id]] = r[C.nc_reasons]||''; });
+  insureds = insureds.map(r => ({ ...r, _ncReasons: ncByInsured[r[C.insured_id]]||'' }));
   const active = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
   const total  = active.length;
   const comp   = cnt(active, r => normStatus(r[C.status]) === 'compliant');
@@ -1700,11 +1709,14 @@ function buildComplianceSummaryHTML(insureds, coverages, { reportDate }) {
   const fd    = fmtDate(reportDate);
   const stamp = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
 
-  const showKPI      = chk('cs-kpi');
-  const showBreakdown= chk('cs-breakdown');
-  const showCOI      = chk('cs-coi');
-  const showNoCOI    = chk('cs-nocoi');
-  const showExpiring = chk('cs-expiring');
+  const showKPI       = chk('cs-kpi');
+  const showBreakdown = chk('cs-breakdown');
+  const showCOI       = chk('cs-coi');
+  const showNoCOI     = chk('cs-nocoi');
+  const showExpiring  = chk('cs-expiring');
+  const showNCReasons = chk('cs-ncreasons');
+  const showCritDist  = chk('cs-criteriadist');
+  const showCovDist   = chk('cs-coveragedist');
 
   const logoSrc = getLogoSrc();
   const logoTag = logoSrc
@@ -1833,7 +1845,7 @@ ${(showBreakdown || showCOI) ? `
 
 ${(showNoCOI || showExpiring) ? `
 <div class="sec-hdr"><div class="sec-lbl">Additional Program Data</div><div class="sec-line"></div></div>
-<div class="two-col">
+<div class="two-col" style="grid-template-columns:${showNoCOI && showExpiring ? '1fr 1fr' : '1fr 600px'}">
   ${showNoCOI ? `<div class="bcard">
     <div class="bcard-title">No COI on File — Breakdown</div>
     <div class="prog-row">
@@ -1848,7 +1860,7 @@ ${(showNoCOI || showExpiring) ? `
       <div class="prog-lbl"><span>Compliant (no COI record)</span><span>${noCoiComp.toLocaleString()} / ${noCoiCount.toLocaleString()}</span></div>
       <div class="prog-track"><div class="prog-fill" style="width:${barPct(noCoiComp,noCoiCount)}%;background:#16A34A"></div></div>
     </div>
-  </div>` : '<div></div>'}
+  </div>` : ''}
   ${showExpiring ? `<div class="bcard">
     <div class="bcard-title">Expiring Coverage</div>
     <div class="exp-grid">
@@ -1863,8 +1875,87 @@ ${(showNoCOI || showExpiring) ? `
       <tr><td>Expiring within 60 days</td><td>${exp60} (${pct(exp60,comp)})</td></tr>
       <tr><td>Expiring within 90 days</td><td>${exp90} (${pct(exp90,comp)})</td></tr>
     </table>
-  </div>` : '<div></div>'}
+  </div>` : ''}
 </div>` : ''}
+
+${(() => {
+  // Build NC reasons map
+  const ncMap = {};
+  if (showNCReasons) {
+    active.filter(r=>normStatus(r[C.status])==='non_compliant').forEach(r=>{
+      (r._ncReasons||'').split(' | ').forEach(p=>{
+        const ci=p.indexOf(':'); if(ci<0) return;
+        const reason=p.slice(ci+1).trim(); if(!reason) return;
+        ncMap[reason]=(ncMap[reason]||0)+1;
+      });
+    });
+  }
+  const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  if (!showNCReasons || !topNC.length) return '';
+  return `<div class="sec-hdr"><div class="sec-lbl">Compliance Intelligence</div><div class="sec-line"></div></div>
+<div class="two-col" style="grid-template-columns:1fr 600px">
+  <div class="bcard">
+    <div class="bcard-title">Top Non-Compliance Reasons</div>
+    ${topNC.map(([reason,n])=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:10px">
+      <div style="flex:1;color:#1E2E3D">${esc(reason)}</div>
+      <div style="width:70px;background:#F1F5F9;border-radius:3px;height:6px"><div style="width:${barPct(n,topNC[0][1])}%;height:100%;background:#3872B8;border-radius:3px"></div></div>
+      <div style="font-weight:700;color:#1E2E3D;width:20px;text-align:right">${n}</div>
+    </div>`).join('')}
+  </div>
+</div>`;
+})()}
+
+${(() => {
+  if (!showCritDist && !showCovDist) return '';
+
+  // Criteria distribution — count NC criteria per insured from criteria CSV data on insureds
+  const critCounts = {};
+  const covCounts  = {};
+  active.filter(r=>normStatus(r[C.status])==='non_compliant').forEach(r=>{
+    const reasons = (r._ncReasons||'').split(' | ').map(s=>s.trim()).filter(Boolean);
+    // Criteria count = total number of NC reason entries
+    const critN = reasons.length;
+    if (critN > 0) critCounts[critN] = (critCounts[critN]||0) + 1;
+    // Coverage count = unique coverage types in reasons
+    const covTypes = new Set(reasons.map(p=>{ const ci=p.indexOf(':'); return ci>0?p.slice(0,ci).trim():''; }).filter(Boolean));
+    const covN = covTypes.size;
+    if (covN > 0) covCounts[covN] = (covCounts[covN]||0) + 1;
+  });
+
+  const critEntries = Object.entries(critCounts).sort((a,b)=>Number(a[0])-Number(b[0]));
+  const covEntries  = Object.entries(covCounts).sort((a,b)=>Number(a[0])-Number(b[0]));
+  const critMax = Math.max(...critEntries.map(([,n])=>n), 1);
+  const covMax  = Math.max(...covEntries.map(([,n])=>n), 1);
+
+  const ordinal = n => { const s=['th','st','nd','rd']; const v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+
+  const bothShowing = showCritDist && critEntries.length && showCovDist && covEntries.length;
+
+  return `<div class="sec-hdr"><div class="sec-lbl">Non-Compliance Distribution</div><div class="sec-line"></div></div>
+<div class="two-col" style="grid-template-columns:${bothShowing?'1fr 1fr':'1fr 600px'}">
+  ${showCritDist && critEntries.length ? `<div class="bcard">
+    <div class="bcard-title">Insured Criteria Breakdown</div>
+    <div style="font-size:9px;color:#5A6B7B;margin-bottom:10px">NC insureds grouped by number of criteria failures</div>
+    ${critEntries.map(([n,count])=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F1F5F9">
+      <div style="font-size:10px;color:#5A6B7B;width:80px;flex-shrink:0">${n} ${Number(n)===1?'criteria':'criteria'}</div>
+      <div style="flex:1;background:#F1F5F9;border-radius:3px;height:8px"><div style="width:${barPct(count,critMax)}%;height:100%;background:#C0392B;border-radius:3px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#1E2E3D;width:28px;text-align:right">${count}</div>
+      <div style="font-size:10px;color:#5A6B7B;width:38px;text-align:right">${pct(count,nc)}</div>
+    </div>`).join('')}
+  </div>` : ''}
+  ${showCovDist && covEntries.length ? `<div class="bcard">
+    <div class="bcard-title">Insured Coverage Breakdown</div>
+    <div style="font-size:9px;color:#5A6B7B;margin-bottom:10px">NC insureds grouped by number of coverage failures</div>
+    ${covEntries.map(([n,count])=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F1F5F9">
+      <div style="font-size:10px;color:#5A6B7B;width:80px;flex-shrink:0">${n} ${Number(n)===1?'coverage':'coverages'}</div>
+      <div style="flex:1;background:#F1F5F9;border-radius:3px;height:8px"><div style="width:${barPct(count,covMax)}%;height:100%;background:#C0392B;border-radius:3px"></div></div>
+      <div style="font-size:11px;font-weight:700;color:#1E2E3D;width:28px;text-align:right">${count}</div>
+      <div style="font-size:10px;color:#5A6B7B;width:38px;text-align:right">${pct(count,nc)}</div>
+    </div>`).join('')}
+  </div>` : ''}
+</div>`;
+})()}
 
 <div class="footer">
   <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel. API Retrieval Date: ${stamp}. Distribution outside of these parties is not permitted without written authorization.</div>
@@ -1905,6 +1996,8 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
   const showDel     = chk('es-delivery');
   const showIssues  = chk('es-issues');
   const show60      = chk('es-60day');
+  const showNcEng   = chk('es-nceng');
+  const showSubjects= chk('es-topsubjects');
 
   const logoSrcES = getLogoSrc();
   const logoTagES = logoSrcES
@@ -1926,19 +2019,19 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
   </div>` : ''}
   ${(showOpen||showDel) ? `
   <div class="sec-hdr"><div class="sec-title">Engagement Breakdown</div></div>
-  <div class="two-col">
+  <div class="two-col" style="grid-template-columns:${showOpen&&showDel?'1fr 1fr':'1fr 600px'}">
     ${showOpen ? `<div class="bcard"><div class="bcard-title">Open Rate</div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#16A34A"></span>Opened</div><div class="bval">${opened.toLocaleString()} (${pct(opened,totalSent)})</div></div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#E2E8F0"></span>Not Opened</div><div class="bval">${notOpened.toLocaleString()} (${pct(notOpened,totalSent)})</div></div>
-    </div>` : '<div></div>'}
+    </div>` : ''}
     ${showDel ? `<div class="bcard"><div class="bcard-title">Deliverability</div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#3872B8"></span>No Issues</div><div class="bval">${noIssue.toLocaleString()} (${pct(noIssue,totalSent)})</div></div>
       <div class="brow"><div class="blbl"><span class="dot" style="background:#DC2626"></span>Issues Detected</div><div class="bval">${issues.toLocaleString()} (${pct(issues,totalSent)})</div></div>
-    </div>` : '<div></div>'}
+    </div>` : ''}
   </div>` : ''}
   ${(showIssues||show60) ? `
   <div class="sec-hdr"><div class="sec-title">Additional Engagement Data</div></div>
-  <div class="two-col">
+  <div class="two-col" style="grid-template-columns:${showIssues&&show60?'1fr 1fr':'1fr 600px'}">
     ${showIssues ? `<div class="bcard"><div class="bcard-title">Delivery Issue Breakdown</div>
       <p style="font-size:10px;color:#5A6B7B;margin-bottom:10px">${issues} unique addresses encountered delivery issues.</p>
       <table class="itbl"><thead><tr><th>Issue Type</th><th>Description</th><th>Count</th><th>Severity</th></tr></thead><tbody>
@@ -1948,7 +2041,7 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
           return `<tr><td style="font-weight:600">${esc(t)}</td><td style="color:#5A6B7B">${desc}</td><td style="font-weight:700">${s.size}</td><td><span class="${isCrit?'crit':'warn'}">${isCrit?'Critical':'Warning'}</span></td></tr>`;
         }).join('')}
       </tbody></table>
-    </div>` : '<div></div>'}
+    </div>` : ''}
     ${show60 ? `<div class="bcard"><div class="bcard-title">60-Day Activity Window</div>
       <p style="font-size:10px;color:#5A6B7B;margin-bottom:12px">Most recent 60-day engagement window.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
@@ -1962,8 +2055,47 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
         <div class="frow"><div class="flbl">OPENED</div><div class="fbar" style="background:#16A34A;width:${barPct(open60,sent60)}%"></div><div class="fcount" style="color:#16A34A">${open60}</div><div class="fpct">${pct(open60,sent60)}</div></div>
         <div class="frow"><div class="flbl">CLICKED</div><div class="fbar" style="background:#1E2E3D;width:${barPct(clk60,sent60)}%"></div><div class="fcount" style="color:#1E2E3D">${clk60}</div><div class="fpct">${pct(clk60,sent60)}</div></div>
       </div>
-    </div>` : '<div></div>'}
+    </div>` : ''}
   </div>` : ''}
+  ${(() => {
+    // NC Insured Engagement Rate
+    const ncEngRows = [], noEngNC = [];
+    if (showNcEng) {
+      const normEm = e => (e||'').trim().toLowerCase();
+      const openedSet = new Set(notifications.filter(isEngOpen).map(n=>normEm(n[C.notif_email])));
+      // We don't have insureds here, but we can compute from notification data
+    }
+    // Top Subjects
+    const subjMap = {};
+    if (showSubjects) {
+      const sendMap = {}, openMap = {};
+      notifications.filter(isEngSend).forEach(n => {
+        const s=(n[C.subject]||'').trim(); if(!s) return;
+        if(!sendMap[s]) sendMap[s]=new Set();
+        sendMap[s].add((n[C.notif_email]||'').toLowerCase());
+      });
+      notifications.filter(isEngOpen).forEach(n => {
+        const s=(n[C.subject]||'').trim(); if(!s) return;
+        if(!openMap[s]) openMap[s]=new Set();
+        openMap[s].add((n[C.notif_email]||'').toLowerCase());
+      });
+      Object.keys(sendMap).forEach(s => {
+        const sent=sendMap[s].size, opens=(openMap[s]||new Set()).size;
+        subjMap[s]={sent,opens,rate:sent?Math.round(opens/sent*100):0};
+      });
+    }
+    const topSubj = Object.entries(subjMap).sort((a,b)=>b[1].rate-a[1].rate).slice(0,8);
+
+    if (!showSubjects || !topSubj.length) return '';
+    return `<div class="sec-hdr"><div class="sec-title">Email Intelligence</div></div>
+  <div class="two-col" style="grid-template-columns:1fr 600px">
+    <div class="bcard"><div class="bcard-title">Top Email Subjects by Open Rate</div>
+      <table class="itbl"><thead><tr><th style="width:60%">Subject</th><th>Sent</th><th>Opens</th><th>Rate</th></tr></thead><tbody>
+        ${topSubj.map(([s,d])=>`<tr><td style="color:#1E2E3D">${esc(s.length>55?s.slice(0,55)+'…':s)}</td><td>${d.sent}</td><td>${d.opens}</td><td style="font-weight:700;color:${d.rate>=50?'#16A34A':d.rate>=25?'#D97706':'#DC2626'}">${d.rate}%</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+  </div>`;
+  })()}
   <div class="footer">
     <span>🔒 Confidential — HUB CertSecure. Prepared exclusively for ${esc(selectedClient.name)} and HUB International personnel.</span>
     <span>HUB CertSecure — Serviced by HUB International | ${esc(selectedClient.name)} | Engagement Summary | ${fd}</span>
