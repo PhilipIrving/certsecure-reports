@@ -465,7 +465,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.07</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.08</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -537,7 +537,6 @@
       <span id="welcome-name" style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:600"></span>
       <span id="welcome-role" style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:12px"></span>
     </div>
-    <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
     
     <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
@@ -751,14 +750,19 @@
 
   <!-- ── STEP 1: CLIENT SELECTION ── -->
   <div id="step-1" class="step-panel">
-    <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div class="page-hdr" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
       <div>
         <div class="page-title">Report Generator</div>
         <div class="page-sub">Select a client to get started</div>
       </div>
-      <button class="btn btn-secondary" onclick="openHubWide()" style="gap:6px;white-space:nowrap;flex-shrink:0">
-        🏢 HUB-Wide Annual
+      <button class="btn btn-secondary" id="refresh-btn" onclick="triggerRefresh()" style="white-space:nowrap;justify-self:center">
+        ↻ Refresh Data
       </button>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="openHubWide()" style="gap:6px;white-space:nowrap">
+          🏢 HUB-Wide Annual
+        </button>
+      </div>
     </div>
     <div class="card">
       <div class="struct-label">General — Shown by Entity Type</div>
@@ -1100,7 +1104,7 @@
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
-<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.07</div>
+<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.08</div>
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
