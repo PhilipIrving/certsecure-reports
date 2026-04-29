@@ -1664,7 +1664,7 @@ function goTo(n) {
 
 // ── Report selection ──
 let _selectedReports = new Set();
-const SERVER_REPORTS = new Set(['yer','pro']); // reports handled by GitHub Actions
+const SERVER_REPORTS = new Set([]); // all reports now built client-side
 
 function toggleReport(id) {
   const card = document.getElementById('rc-' + id);
@@ -1799,35 +1799,8 @@ async function generate() {
   document.getElementById('s3-sub').textContent      = 'Please wait while your reports are built';
 
   const on = id => _selectedReports.has(id);
-  const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
+  const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed'), yer: on('yer'), pro: on('pro') };
 
-  // ── Handle server-side reports first (non-blocking) ──
-  if (on('yer') || on('pro')) {
-    const reportDate = document.getElementById('g-date').value || new Date().getFullYear().toString();
-    const clientName = selectedClient?.key || '';
-
-    if (on('yer')) {
-      const year     = document.getElementById('yer-year')?.value?.trim() || String(new Date().getFullYear() - 1);
-      const producer = document.getElementById('yer-producer')?.value?.trim() || '';
-      await triggerActionReport({
-        client: clientName, year_end_review: 'true',
-        report_year: year, producer_name: producer,
-      }, `${clientName} - Year End Review ${year}.pdf`, `${clientName} — Year End Review ${year}`);
-    }
-    if (on('pro')) {
-      const producer = document.getElementById('pro-producer')?.value?.trim() || '';
-      if (!producer) { toast('Producer name is required for Producer Overview.', 'error'); }
-      else {
-        const month = document.getElementById('pro-month')?.value?.trim() || '';
-        await triggerActionReport({
-          client: clientName, producer_overview: 'true',
-          producer_name: producer, report_year: month ? month.split('-')[0] : '',
-        }, `${clientName} - Producer Overview.pdf`, `${clientName} — Producer Overview (${producer})`);
-      }
-    }
-    // If only server reports selected, return after queuing
-    if (!on('cs') && !on('cd') && !on('es') && !on('ed')) { goTo(2); return; }
-  }
   resetProgress();
 
   try {
@@ -1881,6 +1854,24 @@ async function generate() {
     if (E.es) {
       setProgress('Building Engagement Summary\u2026', 'Generating PDF', 1);
       downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate }), filename:`${selectedClient.name} \u2014 Engagement Summary.pdf` });
+    }
+
+    if (E.yer) {
+      setProgress('Building Year End Review\u2026', 'Fetching snapshot data', 1);
+      const yerYear     = document.getElementById('yer-year')?.value?.trim() || String(new Date().getFullYear() - 1);
+      const yerProducer = document.getElementById('yer-producer')?.value?.trim() || '';
+      downloads.push({ label:`Year End Review ${yerYear}`, type:'pdf', html: await buildYearEndReviewHTML(yerYear, yerProducer), filename:`${selectedClient.name} \u2014 Year End Review ${yerYear}.pdf` });
+    }
+
+    if (E.pro) {
+      const proProducer = document.getElementById('pro-producer')?.value?.trim() || '';
+      if (!proProducer) {
+        toast('Producer name is required for Producer Overview — skipped.', 'error');
+      } else {
+        setProgress('Building Producer Overview\u2026', 'Fetching snapshot data', 1);
+        const proMonth = document.getElementById('pro-month')?.value?.trim() || '';
+        downloads.push({ label:`Producer Overview`, type:'pdf', html: await buildProducerOverviewHTML(proProducer, proMonth || null), filename:`${selectedClient.name} \u2014 Producer Overview.pdf` });
+      }
     }
 
     setProgress('Finalizing…', 'Preparing your downloads', 2);
@@ -3066,6 +3057,309 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
 // ──────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// SNAPSHOT FETCH HELPER
+// ──────────────────────────────────────────────
+async function fetchSnapshotCSV(year, month, filename) {
+  // month = 'YYYY-MM' or null for latest
+  const { owner, repo, branch, pat } = getSettings();
+  let path;
+  if (month) {
+    path = `snapshots/${year}/${month}/${filename}`;
+  } else {
+    // Find latest snapshot month for this year
+    const dirUrl = `https://api.github.com/repos/${owner}/${repo}/contents/snapshots/${year}?ref=${branch}`;
+    const headers = { 'Accept': 'application/vnd.github.v3+json' };
+    if (pat) headers['Authorization'] = `Bearer ${pat}`;
+    const res = await fetch(dirUrl, { headers });
+    if (!res.ok) throw new Error(`No snapshots found for ${year}`);
+    const dirs = await res.json();
+    const months = dirs.filter(d => d.type === 'dir').map(d => d.name).sort();
+    if (!months.length) throw new Error(`No snapshot months found for ${year}`);
+    path = `snapshots/${year}/${months[months.length - 1]}/${filename}`;
+  }
+  return fetchCSV(path);
+}
+
+async function listSnapshotMonths(year) {
+  const { owner, repo, branch, pat } = getSettings();
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/snapshots/${year}?ref=${branch}`;
+  const headers = { 'Accept': 'application/vnd.github.v3+json' };
+  if (pat) headers['Authorization'] = `Bearer ${pat}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) return [];
+  const dirs = await res.json();
+  return dirs.filter(d => d.type === 'dir').map(d => d.name).sort();
+}
+
+// ──────────────────────────────────────────────
+// YEAR END REVIEW PDF BUILDER
+// ──────────────────────────────────────────────
+async function buildYearEndReviewHTML(year, producerName) {
+  const client = selectedClient.key;
+  const months = await listSnapshotMonths(year);
+  if (!months.length) throw new Error(`No snapshot data found for ${year}. Check that snapshots/${year}/ exists in the repo.`);
+
+  // Fetch all monthly insureds snapshots for trend data
+  const monthlyData = [];
+  for (const m of months) {
+    try {
+      const ins = (await fetchCSV(`snapshots/${year}/${m}/insureds.csv`))
+        .filter(r => r[C.client] === client);
+      const active = ins.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+      const comp   = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
+      const nc     = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+      monthlyData.push({ month: m, total: active.length, comp, nc, rate: active.length ? Math.round(comp/active.length*100) : 0 });
+    } catch(e) { /* skip missing months */ }
+  }
+
+  // Use last month for current state
+  const lastMonth = months[months.length - 1];
+  const insureds  = (await fetchSnapshotCSV(year, lastMonth, 'insureds.csv')).filter(r => r[C.client] === client);
+  const active    = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const comp      = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
+  const nc        = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+  const newp      = active.length - comp - nc;
+
+  let criteria = [];
+  try { criteria = (await fetchSnapshotCSV(year, lastMonth, 'criteria.csv')).filter(r => r[C.client] === client); } catch(e) {}
+  let coverages = [];
+  try { coverages = (await fetchSnapshotCSV(year, lastMonth, 'coverages.csv')).filter(r => r[C.client] === client); } catch(e) {}
+
+  // NC reasons
+  const ncMap = {};
+  criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
+    (r[C.nc_reasons]||'').split(' | ').forEach(p => {
+      const ci = p.indexOf(':'); if (ci < 0) return;
+      const reason = p.slice(ci+1).trim(); if (!reason) return;
+      ncMap[reason] = (ncMap[reason]||0) + 1;
+    });
+  });
+  const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  const fd = fmtDate(`${year}-12-31`);
+  const logoSrc = (document.querySelector('.header-logo')?.src?.startsWith('data:')) ? document.querySelector('.header-logo').src : null;
+  const logoTag = logoSrc ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">` :
+    `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span></div>`;
+
+  // Monthly trend bars
+  const maxRate = Math.max(...monthlyData.map(d => d.rate), 1);
+  const trendBars = monthlyData.map(d => {
+    const color = d.rate >= 80 ? '#16A34A' : d.rate >= 60 ? '#D97706' : '#DC2626';
+    const mo = d.month.split('-')[1];
+    const moNames = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+    const label = moNames[parseInt(mo)] || mo;
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:3px">
+      <div style="font-size:11px;font-weight:700;color:${color}">${d.rate}%</div>
+      <div style="width:100%;background:#F1F5F9;border-radius:3px 3px 0 0;position:relative;height:60px;display:flex;align-items:flex-end">
+        <div style="width:100%;background:${color};border-radius:3px 3px 0 0;height:${Math.round(d.rate/100*60)}px"></div>
+      </div>
+      <div style="font-size:9px;color:#5A6B7B">${label}</div>
+    </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(client)} — Year End Review ${year}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:820px;padding:28px 32px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid #1E2E3D}
+.badge-pill{display:inline-block;background:#EBF2FB;color:#3872B8;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
+.client-title{font-size:22px;font-weight:700;color:#1E2E3D;line-height:1.15}
+.year-label{font-size:38px;font-weight:900;color:#3872B8;line-height:1}
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:18px 0 11px}
+.sec-line{flex:1;height:2px;background:#E8ECF5}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;border-left:3px solid #3872B8;padding-left:7px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+.kpi{border-radius:8px;padding:14px 14px 12px}
+.kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
+.kpi-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.kpi.grey .kpi-label{color:#5A6B7B}.kpi.green .kpi-label{color:#15803D}.kpi.red .kpi-label{color:#B91C1C}.kpi.amber .kpi-label{color:#B45309}
+.kpi-val{font-size:28px;font-weight:700;line-height:1}
+.kpi.grey .kpi-val{color:#1E2E3D}.kpi.green .kpi-val{color:#16A34A}.kpi.red .kpi-val{color:#DC2626}.kpi.amber .kpi-val{color:#D97706}
+.kpi-pct{font-size:11px;font-weight:600;margin-top:3px}
+.kpi.green .kpi-pct{color:#16A34A}.kpi.red .kpi-pct{color:#DC2626}.kpi.amber .kpi-pct{color:#D97706}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bcard{border:1px solid #E8ECF5;border-radius:8px;padding:14px 16px}
+.bcard-title{font-size:11px;font-weight:700;color:#1E2E3D;margin-bottom:10px}
+.footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="hdr">
+  <div>${logoTag}</div>
+  <div style="text-align:right">
+    <div class="badge-pill">Year End Review</div>
+    <div class="client-title">${esc(client)}</div>
+    <div class="year-label">${year}</div>
+    ${producerName ? `<div style="font-size:11px;color:#5A6B7B;margin-top:4px">Prepared for: <strong>${esc(producerName)}</strong></div>` : ''}
+  </div>
+</div>
+
+<div class="sec-hdr"><div class="sec-lbl">Year-End Compliance Position</div><div class="sec-line"></div></div>
+<div class="kpi-row">
+  <div class="kpi grey"><div class="kpi-label">Active Entities</div><div class="kpi-val">${active.length}</div><div class="kpi-pct" style="color:#3872B8">as of ${lastMonth}</div></div>
+  <div class="kpi green"><div class="kpi-label">Compliant</div><div class="kpi-val">${comp}</div><div class="kpi-pct">${pct(comp,active.length)}</div></div>
+  <div class="kpi red"><div class="kpi-label">Non-Compliant</div><div class="kpi-val">${nc}</div><div class="kpi-pct">${pct(nc,active.length)}</div></div>
+  <div class="kpi amber"><div class="kpi-label">Pending</div><div class="kpi-val">${newp}</div><div class="kpi-pct">${pct(newp,active.length)}</div></div>
+</div>
+
+${monthlyData.length > 1 ? `
+<div class="sec-hdr"><div class="sec-lbl">Compliance Rate — Monthly Trend (${year})</div><div class="sec-line"></div></div>
+<div style="border:1px solid #E8ECF5;border-radius:8px;padding:14px 16px">
+  <div style="display:flex;gap:6px;align-items:flex-end;height:90px">${trendBars}</div>
+  <div style="font-size:9px;color:#5A6B7B;margin-top:8px;text-align:center">Monthly compliance rate across ${monthlyData.length} snapshots in ${year}</div>
+</div>` : ''}
+
+${topNC.length ? `
+<div class="sec-hdr"><div class="sec-lbl">Top Non-Compliance Reasons (Year-End)</div><div class="sec-line"></div></div>
+<div style="display:grid;grid-template-columns:repeat(${Math.min(topNC.length,5)},1fr);gap:10px">
+  ${topNC.map(([reason,n],i) => `<div style="border:1px solid #F5CFC9;border-radius:8px;padding:12px 11px 10px;background:#FDF0EE">
+    <div style="font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#B91C1C;margin-bottom:5px">#${i+1}</div>
+    <div style="font-size:20px;font-weight:700;color:#C0392B;line-height:1">${n}</div>
+    <div style="font-size:9px;color:#5A6B7B;margin-top:5px;line-height:1.3">${esc(reason.length>45?reason.slice(0,45)+'…':reason)}</div>
+  </div>`).join('')}
+</div>` : ''}
+
+<div class="footer">
+  <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Year End Review for ${esc(client)} · ${year}${producerName ? ` · Prepared for ${esc(producerName)}` : ''}. Internal use only.</div>
+  <div style="text-align:right;white-space:nowrap">HUB CertSecure · Year End Review · ${year}</div>
+</div>
+</body></html>`;
+}
+
+// ──────────────────────────────────────────────
+// PRODUCER OVERVIEW PDF BUILDER
+// ──────────────────────────────────────────────
+async function buildProducerOverviewHTML(producerName, snapshotMonth) {
+  const client = selectedClient.key;
+  const year   = snapshotMonth ? snapshotMonth.split('-')[0] : String(new Date().getFullYear());
+  const month  = snapshotMonth || null;
+
+  // Fetch snapshot data
+  const insureds  = (await fetchSnapshotCSV(year, month, 'insureds.csv')).filter(r => r[C.client] === client);
+  const active    = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+  const comp      = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
+  const nc        = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+  const newp      = active.length - comp - nc;
+
+  let coverages = [];
+  try { coverages = (await fetchSnapshotCSV(year, month, 'coverages.csv')).filter(r => r[C.client] === client); } catch(e) {}
+  let criteria = [];
+  try { criteria  = (await fetchSnapshotCSV(year, month, 'criteria.csv')).filter(r => r[C.client] === client); } catch(e) {}
+
+  // Expiring coverage
+  const exp30 = cnt(coverages, r => expiringSoon(r[C.exp_date], 30));
+  const exp60 = cnt(coverages, r => expiringSoon(r[C.exp_date], 60));
+  const exp90 = cnt(coverages, r => expiringSoon(r[C.exp_date], 90));
+
+  // NC reasons
+  const ncMap = {};
+  criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
+    (r[C.nc_reasons]||'').split(' | ').forEach(p => {
+      const ci = p.indexOf(':'); if (ci < 0) return;
+      const reason = p.slice(ci+1).trim(); if (!reason) return;
+      ncMap[reason] = (ncMap[reason]||0) + 1;
+    });
+  });
+  const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  // NC entities list (top 10)
+  const ncEntities = active.filter(r => normStatus(r[C.status]) === 'non_compliant').slice(0,10);
+
+  const snapshotLabel = snapshotMonth || `${year} (latest)`;
+  const fd = fmtDate(new Date().toISOString().split('T')[0]);
+  const logoSrc = (document.querySelector('.header-logo')?.src?.startsWith('data:')) ? document.querySelector('.header-logo').src : null;
+  const logoTag = logoSrc ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">` :
+    `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span></div>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(client)} — Producer Overview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:820px;padding:28px 32px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #E8ECF5}
+.badge-pill{display:inline-block;background:#E6F5EF;color:#15803D;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
+.client-title{font-size:20px;font-weight:700;color:#1E2E3D;line-height:1.15}
+.producer-name{font-size:13px;color:#3872B8;font-weight:600;margin-top:4px}
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:16px 0 10px}
+.sec-line{flex:1;height:2px;background:#E8ECF5}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;border-left:3px solid #16A34A;padding-left:7px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+.kpi{border-radius:8px;padding:12px 12px 10px}
+.kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
+.kpi-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.kpi.grey .kpi-label{color:#5A6B7B}.kpi.green .kpi-label{color:#15803D}.kpi.red .kpi-label{color:#B91C1C}.kpi.amber .kpi-label{color:#B45309}
+.kpi-val{font-size:24px;font-weight:700;line-height:1}
+.kpi.grey .kpi-val{color:#1E2E3D}.kpi.green .kpi-val{color:#16A34A}.kpi.red .kpi-val{color:#DC2626}.kpi.amber .kpi-val{color:#D97706}
+.kpi-pct{font-size:10px;font-weight:600;margin-top:2px}
+.kpi.green .kpi-pct{color:#16A34A}.kpi.red .kpi-pct{color:#DC2626}.kpi.amber .kpi-pct{color:#D97706}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bcard{border:1px solid #E8ECF5;border-radius:8px;padding:13px 14px}
+.bcard-title{font-size:11px;font-weight:700;color:#1E2E3D;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:10px}
+th{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5A6B7B;padding:5px 7px;text-align:left;border-bottom:1px solid #E8ECF5}
+td{padding:6px 7px;border-bottom:1px solid #F5F7FA}
+.status-nc{background:#FEF2F2;color:#991B1B;padding:2px 7px;border-radius:12px;font-size:9px;font-weight:600}
+.footer{margin-top:18px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="hdr">
+  <div>${logoTag}</div>
+  <div style="text-align:right">
+    <div class="badge-pill">Producer Overview</div>
+    <div class="client-title">${esc(client)}</div>
+    <div class="producer-name">Prepared for: ${esc(producerName)}</div>
+    <div style="font-size:11px;color:#5A6B7B;margin-top:3px">Snapshot: ${snapshotLabel} · Generated: ${fd}</div>
+  </div>
+</div>
+
+<div class="sec-hdr"><div class="sec-lbl">Program Summary</div><div class="sec-line"></div></div>
+<div class="kpi-row">
+  <div class="kpi grey"><div class="kpi-label">Active Entities</div><div class="kpi-val">${active.length}</div></div>
+  <div class="kpi green"><div class="kpi-label">Compliant</div><div class="kpi-val">${comp}</div><div class="kpi-pct">${pct(comp,active.length)}</div></div>
+  <div class="kpi red"><div class="kpi-label">Non-Compliant</div><div class="kpi-val">${nc}</div><div class="kpi-pct">${pct(nc,active.length)}</div></div>
+  <div class="kpi amber"><div class="kpi-label">Pending</div><div class="kpi-val">${newp}</div><div class="kpi-pct">${pct(newp,active.length)}</div></div>
+</div>
+
+<div class="two-col" style="margin-top:14px">
+  <div class="bcard">
+    <div class="bcard-title">Expiring Coverage</div>
+    ${[['30 Days',exp30,'#DC2626'],['60 Days',exp60,'#D97706'],['90 Days',exp90,'#1E2E3D']].map(([l,n,c])=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F5F7FA;font-size:11px">
+      <span style="color:#5A6B7B">${l}</span>
+      <span style="font-weight:700;color:${c}">${n}</span>
+    </div>`).join('')}
+  </div>
+  ${topNC.length ? `<div class="bcard">
+    <div class="bcard-title">Top NC Reasons</div>
+    ${topNC.map(([reason,n])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid #F5F7FA;font-size:10px;gap:8px">
+      <span style="color:#5A6B7B;flex:1;line-height:1.3">${esc(reason.length>50?reason.slice(0,50)+'…':reason)}</span>
+      <span style="font-weight:700;color:#DC2626;white-space:nowrap">${n}</span>
+    </div>`).join('')}
+  </div>` : '<div></div>'}
+</div>
+
+${ncEntities.length ? `
+<div class="sec-hdr" style="margin-top:16px"><div class="sec-lbl">Non-Compliant Entities</div><div class="sec-line"></div></div>
+<table>
+  <thead><tr><th>Entity Name</th><th>Status</th><th>Next Expiration</th><th>Contact</th></tr></thead>
+  <tbody>${ncEntities.map((r,i)=>`<tr style="background:${i%2===0?'#FAFBFC':'white'}">
+    <td style="font-weight:600">${esc(r[C.entity_name]||'')}</td>
+    <td><span class="status-nc">Non-Compliant</span></td>
+    <td>${fmtDate(r[C.next_exp])}</td>
+    <td style="color:#5A6B7B;font-size:9px">${esc(r[C.email]||'')}</td>
+  </tr>`).join('')}</tbody>
+</table>` : ''}
+
+<div class="footer">
+  <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Prepared for ${esc(producerName)} · ${esc(client)} · Snapshot: ${snapshotLabel}. Internal use only.</div>
+  <div style="text-align:right;white-space:nowrap">HUB CertSecure · Producer Overview</div>
+</div>
+</body></html>`;
+}
+
 function normStatus(s) {
   if (!s) return 'unknown';
   const l = s.toLowerCase().replace(/[\s-]/g,'_');
