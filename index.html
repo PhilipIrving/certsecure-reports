@@ -39,7 +39,7 @@
     body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
 
     /* ── Login overlay ── */
-    #login-overlay {
+    #auth-overlay {
       position:fixed;inset:0;z-index:9999;
       background:linear-gradient(135deg,#1E2E3D 0%,#2B3A52 60%,#3872B8 100%);
       align-items:center;justify-content:center;
@@ -73,6 +73,12 @@
     .login-btn:hover { background:#3872B8; }
     .login-btn:disabled { background:#94A3B8;cursor:not-allowed; }
     .login-footer { font-size:10px;color:#94A3B8;text-align:center;margin-top:20px;line-height:1.4; }
+    .login-link { font-size:12px;color:#3872B8;text-decoration:none;font-weight:600; }
+    .login-link:hover { text-decoration:underline; }
+    .login-success { background:#E6F5EF;border:1px solid #C3E6D3;border-radius:8px;padding:10px 14px;font-size:12px;color:#1A7F5A;margin-bottom:16px; }
+    .stab { background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;font-family:inherit; }
+    .stab.active { color:var(--blue);border-bottom-color:var(--blue); }
+    .stab:hover:not(.active) { color:var(--navy); }
 
     /* ── Header ── */
     .header {
@@ -357,17 +363,19 @@
 </head>
 <body>
 
-<!-- ═══════════════════ LOGIN OVERLAY ═══════════════════ -->
-<div id="login-overlay" style="display:flex">
+<!-- ═══════════════════ AUTH OVERLAY ═══════════════════ -->
+<div id="auth-overlay" style="display:flex">
   <div class="login-wrap">
-    <div class="login-card">
+
+    <!-- Sign In view -->
+    <div id="view-signin" class="login-card">
       <div class="login-logo">
         <div class="logo-cert">CERT</div><div class="logo-secure">SECURE</div>
         <div class="logo-sub">SERVICED BY HUB</div>
       </div>
       <div class="login-title">Sign in to continue</div>
       <div class="login-sub">Access is restricted to authorized HUB CertSecure personnel.</div>
-      <div id="login-err" class="login-err" style="display:none"></div>
+      <div id="signin-err" class="login-err" style="display:none"></div>
       <div class="login-field">
         <label class="login-label">Email address</label>
         <input type="email" id="login-email" class="login-input" placeholder="you@hubinternational.com" autocomplete="email">
@@ -377,8 +385,51 @@
         <input type="password" id="login-password" class="login-input" placeholder="••••••••" autocomplete="current-password">
       </div>
       <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
+      </div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
+
+    <!-- Forgot Password view -->
+    <div id="view-forgot" class="login-card" style="display:none">
+      <div class="login-logo">
+        <div class="logo-cert">CERT</div><div class="logo-secure">SECURE</div>
+        <div class="logo-sub">SERVICED BY HUB</div>
+      </div>
+      <div class="login-title">Reset your password</div>
+      <div class="login-sub">Enter your email and we'll send you a reset link.</div>
+      <div id="forgot-msg" class="login-err" style="display:none"></div>
+      <div class="login-field">
+        <label class="login-label">Email address</label>
+        <input type="email" id="forgot-email" class="login-input" placeholder="you@hubinternational.com">
+      </div>
+      <button class="login-btn" id="forgot-btn" onclick="doForgotPassword()">Send Reset Link</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="#" class="login-link" onclick="showView('signin');return false">← Back to sign in</a>
+      </div>
+    </div>
+
+    <!-- Reset Password view (shown when recovery link clicked) -->
+    <div id="view-reset" class="login-card" style="display:none">
+      <div class="login-logo">
+        <div class="logo-cert">CERT</div><div class="logo-secure">SECURE</div>
+        <div class="logo-sub">SERVICED BY HUB</div>
+      </div>
+      <div class="login-title">Set new password</div>
+      <div class="login-sub">Choose a strong password for your account.</div>
+      <div id="reset-msg" class="login-err" style="display:none"></div>
+      <div class="login-field">
+        <label class="login-label">New password</label>
+        <input type="password" id="reset-password" class="login-input" placeholder="At least 8 characters">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Confirm new password</label>
+        <input type="password" id="reset-confirm" class="login-input" placeholder="Repeat password">
+      </div>
+      <button class="login-btn" id="reset-btn" onclick="doResetPassword()">Set New Password</button>
+    </div>
+
   </div>
 </div>
 
@@ -391,71 +442,132 @@
   <div class="header-right">
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
-    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.04</span>
-    <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
-  </div>
+    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.05</span>
+    <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>  </div>
 </header>
 
 <!-- ═══════════════════ SETTINGS MODAL ═══════════════════ -->
 <div class="overlay" id="settings-overlay">
-  <div class="modal">
+  <div class="modal" style="max-width:580px">
     <div class="modal-hdr">
       <span class="modal-title">⚙ Settings</span>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
 
-    <div class="form-grp">
-      <label class="form-lbl">GitHub Repository Owner</label>
-      <input type="text" id="s-owner" placeholder="e.g. PhilipIrving">
-      <div class="form-hint">Your GitHub username or organization name</div>
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Repository Name</label>
-      <input type="text" id="s-repo" placeholder="e.g. evident-powerbi">
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Branch</label>
-      <input type="text" id="s-branch" placeholder="main">
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">GitHub Personal Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-      <input type="text" id="s-pat" placeholder="ghp_...">
-      <div class="form-hint">Only needed for the "Refresh Data" button. Requires <strong>workflow</strong> scope. Leave blank if not using refresh.</div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px">
+      <button class="stab active" id="stab-github" onclick="switchSettingsTab('github')">GitHub</button>
+      <button class="stab" id="stab-users" onclick="switchSettingsTab('users')">Users</button>
+      <button class="stab" id="stab-admin" onclick="switchSettingsTab('admin')">Admin</button>
     </div>
 
-    <hr class="modal-divider">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">CSV File Paths (in your repo)</div>
+    <!-- GitHub tab -->
+    <div id="stab-content-github">
+      <div class="form-grp">
+        <label class="form-lbl">GitHub Repository Owner</label>
+        <input type="text" id="s-owner" placeholder="e.g. PhilipIrving">
+        <div class="form-hint">Your GitHub username or organization name</div>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Repository Name</label>
+        <input type="text" id="s-repo" placeholder="e.g. evident-powerbi">
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Branch</label>
+        <input type="text" id="s-branch" placeholder="main">
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">GitHub Personal Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="s-pat" placeholder="ghp_...">
+        <div class="form-hint">Only needed for the "Refresh Data" button. Requires <strong>workflow</strong> scope.</div>
+      </div>
+      <hr class="modal-divider">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">CSV File Paths (in your repo)</div>
+      <div class="form-grp">
+        <label class="form-lbl">Insureds CSV</label>
+        <input type="text" id="s-insureds" placeholder="data/insureds.csv">
+        <div class="form-hint">Main compliance data — insured names, status, expiration</div>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Coverages CSV</label>
+        <input type="text" id="s-coverages" placeholder="data/coverages.csv">
+        <div class="form-hint">Per-coverage data — used for Expiring Coverage sheet</div>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Criteria CSV</label>
+        <input type="text" id="s-criteria" placeholder="data/criteria.csv">
+        <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Custom Properties CSV</label>
+        <input type="text" id="s-customprops" placeholder="data/custom_properties.csv">
+        <div class="form-hint">Contract numbers, entity types, notification lists per insured</div>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Engagement CSV</label>
+        <input type="text" id="s-notifications" placeholder="data/engagement.csv">
+        <div class="form-hint">Email event data — used for all Engagement reports</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
 
-    <div class="form-grp">
-      <label class="form-lbl">Insureds CSV</label>
-      <input type="text" id="s-insureds" placeholder="data/insureds.csv">
-      <div class="form-hint">Main compliance data — insured names, status, expiration</div>
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Coverages CSV</label>
-      <input type="text" id="s-coverages" placeholder="data/coverages.csv">
-      <div class="form-hint">Per-coverage data — used for Expiring Coverage sheet</div>
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Criteria CSV</label>
-      <input type="text" id="s-criteria" placeholder="data/criteria.csv">
-      <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Custom Properties CSV</label>
-      <input type="text" id="s-customprops" placeholder="data/custom_properties.csv">
-      <div class="form-hint">Contract numbers, entity types, notification lists per insured</div>
-    </div>
-    <div class="form-grp">
-      <label class="form-lbl">Engagement CSV</label>
-      <input type="text" id="s-notifications" placeholder="data/engagement.csv">
-      <div class="form-hint">Email event data — used for all Engagement reports</div>
+    <!-- Users tab -->
+    <div id="stab-content-users" style="display:none">
+      <div id="users-need-key" style="display:none">
+        <div style="background:#FFF8E6;border:1px solid #F5E5B0;border-radius:8px;padding:14px 16px;font-size:12px;color:#1E2E3D;margin-bottom:16px">
+          <strong style="color:#B45309">⚠ Admin key required</strong><br>
+          Add your Supabase service role key in the Admin tab to manage users.
+        </div>
+      </div>
+      <div id="users-panel" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">Team Members</div>
+          <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="showAddUser()">+ Add User</button>
+        </div>
+        <div id="users-list" style="min-height:60px">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>
+        </div>
+        <!-- Add user form -->
+        <div id="add-user-form" style="display:none;margin-top:16px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">Add New User</div>
+          <div class="form-grp">
+            <label class="form-lbl">Email</label>
+            <input type="email" id="new-user-email" class="login-input" style="font-size:13px;padding:8px 12px" placeholder="email@hubinternational.com">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Temporary Password</label>
+            <input type="text" id="new-user-pass" class="login-input" style="font-size:13px;padding:8px 12px" placeholder="They can reset it after first login">
+          </div>
+          <div id="add-user-msg" style="display:none;font-size:12px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="doAddUser()">Create User</button>
+            <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="hideAddUser()">Cancel</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
-      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    <!-- Admin tab -->
+    <div id="stab-content-admin" style="display:none">
+      <div style="background:#EEF1F8;border-radius:8px;padding:12px 14px;font-size:12px;color:#5A6B7B;margin-bottom:16px;line-height:1.5">
+        The service role key enables user management. Find it in your Supabase dashboard under<br>
+        <strong>Project Settings → API → Secret keys → service_role</strong>.<br>
+        <span style="color:#C0392B;font-weight:600">Keep this key private — never share it publicly.</span>
+      </div>
+      <div class="form-grp">
+        <label class="form-lbl">Supabase Service Role Key</label>
+        <input type="password" id="s-service-role" placeholder="eyJ...">
+        <div class="form-hint">Stored locally on this device only. Required to add/remove users.</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveAdminKey()">Save Key</button>
+      </div>
     </div>
+
   </div>
 </div>
 
@@ -683,80 +795,254 @@
 const SUPABASE_URL = 'https://nwcyavfkmbhcadtrvyqy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_qpgDwAfvcOQIixrV3uPK-w_HWwIg36o';
 
-let _supabase = null;
+let _supabase = null, _supabaseAdmin = null;
+
 function getSupabase() {
   if (!_supabase) {
     _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: {
-        persistSession: false,   // require login every time
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      }
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true }
     });
   }
   return _supabase;
 }
 
+function getSupabaseAdmin() {
+  const key = localStorage.getItem('cs-service-role');
+  if (!key) return null;
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = supabase.createClient(SUPABASE_URL, key, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+  return _supabaseAdmin;
+}
+
+// ── View switching ──
+function showView(name) {
+  ['signin','forgot','reset'].forEach(v => {
+    document.getElementById(`view-${v}`).style.display = v === name ? '' : 'none';
+  });
+}
+
+// ── Check for password recovery token in URL ──
+function checkRecoveryToken() {
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery') || hash.includes('type=signup')) {
+    // Exchange the token
+    getSupabase().auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        document.getElementById('auth-overlay').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+        showView('reset');
+      }
+    });
+    return true;
+  }
+  return false;
+}
+
+// ── Sign In ──
 async function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const btn      = document.getElementById('login-btn');
-  const errEl    = document.getElementById('login-err');
+  const errEl    = document.getElementById('signin-err');
 
-  if (!email || !password) {
-    showLoginErr('Please enter your email and password.');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
-  errEl.style.display = 'none';
+  if (!email || !password) { showAuthErr('signin-err', 'Please enter your email and password.'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…'; errEl.style.display = 'none';
 
   try {
     const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
     if (error) {
-      showLoginErr(error.message === 'Invalid login credentials'
-        ? 'Incorrect email or password. Please try again.'
-        : error.message);
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
-      return;
+      showAuthErr('signin-err', error.message === 'Invalid login credentials'
+        ? 'Incorrect email or password. Please try again.' : error.message);
+      btn.disabled = false; btn.textContent = 'Sign In'; return;
     }
-    // Success — hide login, show app
-    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('auth-overlay').style.display = 'none';
     document.getElementById('main-app').style.display = '';
   } catch(e) {
-    showLoginErr('Connection error. Please check your internet and try again.');
-    btn.disabled = false;
-    btn.textContent = 'Sign In';
+    showAuthErr('signin-err', 'Connection error. Please check your internet and try again.');
+    btn.disabled = false; btn.textContent = 'Sign In';
   }
 }
 
+// ── Sign Out ──
 async function doSignOut() {
   await getSupabase().auth.signOut();
-  // Clear fields and show login again
+  _supabaseAdmin = null;
   document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-btn').disabled   = false;
   document.getElementById('login-btn').textContent= 'Sign In';
-  document.getElementById('login-err').style.display = 'none';
-  document.getElementById('main-app').style.display  = 'none';
-  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('signin-err').style.display  = 'none';
+  document.getElementById('main-app').style.display    = 'none';
+  document.getElementById('auth-overlay').style.display= 'flex';
+  showView('signin');
 }
 
-function showLoginErr(msg) {
-  const el = document.getElementById('login-err');
+// ── Forgot Password ──
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const btn   = document.getElementById('forgot-btn');
+  if (!email) { showAuthErr('forgot-msg', 'Please enter your email address.', false); return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0],
+  });
+
+  if (error) {
+    showAuthErr('forgot-msg', error.message, false);
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
+  } else {
+    showAuthMsg('forgot-msg', `Reset link sent to ${email}. Check your inbox.`);
+    btn.textContent = 'Sent ✓';
+  }
+}
+
+// ── Reset Password ──
+async function doResetPassword() {
+  const pw  = document.getElementById('reset-password').value;
+  const pw2 = document.getElementById('reset-confirm').value;
+  const btn = document.getElementById('reset-btn');
+
+  if (!pw || pw.length < 8) { showAuthErr('reset-msg', 'Password must be at least 8 characters.', false); return; }
+  if (pw !== pw2)            { showAuthErr('reset-msg', 'Passwords do not match.', false); return; }
+
+  btn.disabled = true; btn.textContent = 'Updating…';
+  const { error } = await getSupabase().auth.updateUser({ password: pw });
+
+  if (error) {
+    showAuthErr('reset-msg', error.message, false);
+    btn.disabled = false; btn.textContent = 'Set New Password';
+  } else {
+    showAuthMsg('reset-msg', 'Password updated! Signing you in…');
+    setTimeout(() => {
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('main-app').style.display = '';
+      window.location.hash = '';
+    }, 1500);
+  }
+}
+
+// ── Auth helpers ──
+function showAuthErr(id, msg, isErr=true) {
+  const el = document.getElementById(id);
   el.textContent = msg;
+  el.className = isErr ? 'login-err' : 'login-err';
+  el.style.display = 'block';
+}
+function showAuthMsg(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'login-success';
   el.style.display = 'block';
 }
 
-// Allow Enter key to submit login
+// ── Settings tabs ──
+function switchSettingsTab(tab) {
+  ['github','users','admin'].forEach(t => {
+    document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`stab-content-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'users') loadUsers();
+}
+
+// ── User management ──
+async function loadUsers() {
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    document.getElementById('users-need-key').style.display = '';
+    document.getElementById('users-panel').style.display    = 'none';
+    return;
+  }
+  document.getElementById('users-need-key').style.display = 'none';
+  document.getElementById('users-panel').style.display    = '';
+  document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>';
+
+  try {
+    const { data, error } = await admin.auth.admin.listUsers();
+    if (error) throw error;
+    const users = data.users || [];
+    if (!users.length) {
+      document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet.</div>';
+      return;
+    }
+    document.getElementById('users-list').innerHTML = users.map(u => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:8px;background:var(--white)">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy)">${u.email}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Never'}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="doResetUserPassword('${u.id}','${u.email}')" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Reset PW</button>
+          <button onclick="doDeleteUser('${u.id}','${u.email}')" style="font-size:11px;padding:4px 10px;border:1px solid #F5CFC9;border-radius:5px;background:#FDF0EE;cursor:pointer;color:#C0392B">Remove</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('users-list').innerHTML = `<div style="color:var(--red);font-size:12px;padding:10px">${e.message}</div>`;
+  }
+}
+
+async function doAddUser() {
+  const email = document.getElementById('new-user-email').value.trim();
+  const pass  = document.getElementById('new-user-pass').value.trim();
+  const msgEl = document.getElementById('add-user-msg');
+  if (!email || !pass) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent='Both fields are required.'; return; }
+  if (pass.length < 8) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent='Password must be at least 8 characters.'; return; }
+
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  const { error } = await admin.auth.admin.createUser({ email, password: pass, email_confirm: true });
+  if (error) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent=error.message; return; }
+  msgEl.style.display='block'; msgEl.style.color='#1A7F5A'; msgEl.textContent=`${email} added successfully.`;
+  document.getElementById('new-user-email').value=''; document.getElementById('new-user-pass').value='';
+  setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
+}
+
+async function doDeleteUser(uid, email) {
+  if (!confirm(`Remove ${email}? They will lose access immediately.`)) return;
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  const { error } = await admin.auth.admin.deleteUser(uid);
+  if (error) { toast(error.message,'error'); return; }
+  toast(`${email} removed`,'success'); loadUsers();
+}
+
+async function doResetUserPassword(uid, email) {
+  const newPw = prompt(`Set a temporary password for ${email}:\n(At least 8 characters)`);
+  if (!newPw || newPw.length < 8) { if(newPw!==null) toast('Password must be at least 8 characters','error'); return; }
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  const { error } = await admin.auth.admin.updateUserById(uid, { password: newPw });
+  if (error) { toast(error.message,'error'); return; }
+  toast(`Password reset for ${email}`,'success');
+}
+
+function showAddUser() { document.getElementById('add-user-form').style.display=''; }
+function hideAddUser() { document.getElementById('add-user-form').style.display='none'; document.getElementById('add-user-msg').style.display='none'; }
+
+function saveAdminKey() {
+  const key = document.getElementById('s-service-role').value.trim();
+  if (key) { localStorage.setItem('cs-service-role', key); _supabaseAdmin = null; toast('Admin key saved','success'); }
+  else { localStorage.removeItem('cs-service-role'); _supabaseAdmin = null; toast('Admin key cleared','success'); }
+  closeSettings();
+}
+
+// ── Enter key support & recovery check ──
 document.addEventListener('DOMContentLoaded', () => {
   ['login-email','login-password'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') doLogin();
-    });
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
   });
+  document.getElementById('forgot-email')?.addEventListener('keydown', e => { if (e.key==='Enter') doForgotPassword(); });
+  ['reset-password','reset-confirm'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doResetPassword(); });
+  });
+  // Check if this is a password reset redirect
+  checkRecoveryToken();
+  // Pre-fill service role key if saved
+  const sr = localStorage.getItem('cs-service-role');
+  if (sr) document.getElementById('s-service-role').value = sr;
 });
 
 // ──────────────────────────────────────────────
