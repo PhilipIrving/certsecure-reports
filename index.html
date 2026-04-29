@@ -1255,7 +1255,222 @@ function initDark() {
     document.documentElement.classList.add('dark');
     const btn = document.getElementById('dark-toggle');
     if (btn) btn.textContent = '☀️';
+}
+}
+
+// ──────────────────────────────────────────────
+// CLIENT CONFIGURATION
+// ──────────────────────────────────────────────
+const CLIENTS = [
+  { name: "A G Equipment Company",               key: "A G Equipment Company",               structure: "general"  },
+  { name: "Canadian Pacific Kansas City",         key: "Canadian Pacific Kansas City",         structure: "general"  },
+  { name: "Capital Railroad Contracting, Inc.",   key: "Capital Railroad Contracting, Inc.",   structure: "general"  },
+  { name: "Kolb Grading",                         key: "Kolb Grading",                         structure: "general"  },
+  { name: "Mizuho Bank",                          key: "Mizuho Bank",                          structure: "general"  },
+  { name: "Musselman & Hall Contractors, LLC",    key: "Musselman & Hall Contractors, LLC",    structure: "general"  },
+  { name: "Paragon Geophysical Services, Inc.",   key: "Paragon Geophysical Services, Inc.",   structure: "general"  },
+  { name: "Trinity Chemical Industries LLC",      key: "Trinity Chemical Industries LLC",      structure: "general"  },
+  { name: "United Coal Company LLC",              key: "United Coal Company LLC",              structure: "general"  },
+  { name: "Bauer Foundation Corp.",               key: "Bauer Foundation Corp.",               structure: "project"  },
+  { name: "ESS Companies",                        key: "ESS Companies",                        structure: "project"  },
+  { name: "Scandroli Construction",               key: "Scandroli Construction",               structure: "project"  },
+  { name: "Skyline Developers Construction LLC",  key: "Skyline Developers Construction LLC",  structure: "project"  },
+  { name: "EMMES",                                key: "EMMES",                                structure: "location" },
+  { name: "Gart Properties",                      key: "Gart Properties",                      structure: "location" },
+  { name: "The Abbey Management Company",         key: "The Abbey Management Company",         structure: "location" },
+];
+
+const STRUCT = {
+  general:  { label: "General",        groupLabel: null,          badgeClass: "badge-general"  },
+  project:  { label: "Subcontractors", groupLabel: "Project",     badgeClass: "badge-project"  },
+  location: { label: "Tenants",        groupLabel: "Location",    badgeClass: "badge-location" },
+};
+
+const CLIENT_FIELD_CONFIG = {
+  "A G Equipment Company":              [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false }],
+  "Canadian Pacific Kansas City":       [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false },{ key:"contractNumber",label:"Contract Number",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Capital Railroad Contracting, Inc.": [{ key:"entityId",label:"Entity ID",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Kolb Grading":                       [{ key:"entityId",label:"Entity ID",on:false }],
+  "Mizuho Bank":                        [{ key:"loanName",label:"Loan Name",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Musselman & Hall Contractors, LLC":  [{ key:"insuranceType",label:"Insurance Type",on:false }],
+  "Paragon Geophysical Services, Inc.": [{ key:"insuranceType",label:"Insurance Type",on:false }],
+  "Trinity Chemical Industries LLC":    [{ key:"entityId",label:"Entity ID",on:false },{ key:"ofCars",label:"# of Cars",on:false },{ key:"notes",label:"Notes",on:false }],
+  "United Coal Company LLC":            [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false }],
+  "Bauer Foundation Corp.":             [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false },{ key:"projectName",label:"Project Name",on:false },{ key:"projectNumber",label:"Project Number",on:false },{ key:"insuranceType",label:"Insurance Type",on:false },{ key:"notes",label:"Notes",on:false }],
+  "ESS Companies":                      [{ key:"entityId",label:"Entity ID",on:false },{ key:"jobDescription",label:"Job Description",on:false },{ key:"jobNumber",label:"Job Number",on:false },{ key:"subcontractNumber",label:"Subcontract Number",on:false },{ key:"insuranceType",label:"Insurance Type",on:false },{ key:"projectSpecific",label:"Project Specific",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Scandroli Construction":             [{ key:"entityId",label:"Entity ID",on:false },{ key:"projectName",label:"Project Name",on:false },{ key:"projectId",label:"Project ID",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Skyline Developers Construction LLC":[{ key:"projectName",label:"Project Name",on:false },{ key:"notes",label:"Notes",on:false }],
+  "EMMES":                              [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false },{ key:"propertyLocation",label:"Property Location",on:false },{ key:"notes",label:"Notes",on:false }],
+  "Gart Properties":                    [{ key:"entityId",label:"Entity ID",on:false },{ key:"propertyLocation",label:"Property Location",on:false },{ key:"propertyManager",label:"Property Manager",on:false },{ key:"tenantType",label:"Tenant Type",on:false },{ key:"notes",label:"Notes",on:false }],
+  "The Abbey Management Company":       [{ key:"entityId",label:"Entity ID",on:false },{ key:"entityType",label:"Entity Type",on:false },{ key:"propertyLocation",label:"Property Location",on:false },{ key:"rsf",label:"Rentable Sq. Footage",on:false },{ key:"notes",label:"Notes",on:false }],
+};
+
+// ── CSV column mappings ──
+const C = {
+  client:'client', entity_name:'insured_name', insured_id:'insured_id',
+  status:'compliance_status', verify_status:'verification_status',
+  next_exp:'next_expiration', email:'primary_contact_email',
+  active:'active', paused:'paused',
+  cov_client:'client', coverage_type:'coverage_type', exp_date:'expiration_date',
+  crit_client:'client', crit_name:'insured_name', crit_email:'primary_contact_email',
+  overall_comp:'overall_compliance', nc_reasons:'non_compliance_reasons',
+  notif_client:'Client', notif_email:'Email', eng_type:'Type', sent_at:'Date', subject:'Subject',
+};
+const isEngSend  = n => n[C.eng_type] === 'send';
+const isEngOpen  = n => n[C.eng_type] === 'open';
+const isEngClick = n => n[C.eng_type] === 'click';
+const isEngIssue = n => ['hard_bounce','soft_bounce','reject','rejected','deferral','spam'].includes((n[C.eng_type]||'').toLowerCase());
+
+// ── Settings ──
+const DEFAULTS = {
+  owner:'PhilipIrving', repo:'evident-powerbi', branch:'main', pat:'',
+  insuredsPath:'data/insureds.csv', coveragesPath:'data/coverages.csv',
+  criteriaPath:'data/criteria.csv', customPropsPath:'data/custom_properties.csv',
+  notificationsPath:'data/engagement.csv',
+};
+function getSettings() { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('cs-settings') || '{}') }; }
+function openSettings() {
+  const s = getSettings();
+  document.getElementById('s-owner').value         = s.owner;
+  document.getElementById('s-repo').value          = s.repo;
+  document.getElementById('s-branch').value        = s.branch;
+  document.getElementById('s-pat').value           = s.pat;
+  document.getElementById('s-insureds').value      = s.insuredsPath;
+  document.getElementById('s-coverages').value     = s.coveragesPath;
+  document.getElementById('s-criteria').value      = s.criteriaPath;
+  document.getElementById('s-customprops').value   = s.customPropsPath;
+  document.getElementById('s-notifications').value = s.notificationsPath;
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+function saveSettings() {
+  localStorage.setItem('cs-settings', JSON.stringify({
+    owner:            document.getElementById('s-owner').value.trim(),
+    repo:             document.getElementById('s-repo').value.trim(),
+    branch:           document.getElementById('s-branch').value.trim() || 'main',
+    pat:              document.getElementById('s-pat').value.trim(),
+    insuredsPath:     document.getElementById('s-insureds').value.trim(),
+    coveragesPath:    document.getElementById('s-coverages').value.trim(),
+    criteriaPath:     document.getElementById('s-criteria').value.trim(),
+    customPropsPath:  document.getElementById('s-customprops').value.trim(),
+    notificationsPath:document.getElementById('s-notifications').value.trim(),
+  }));
+  closeSettings(); toast('Settings saved', 'success');
+}
+
+// ── Data loading ──
+async function fetchCSV(path) {
+  const { owner, repo, branch, pat } = getSettings();
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  const headers = { 'Accept': 'application/vnd.github.v3.raw' };
+  if (pat) headers['Authorization'] = `Bearer ${pat}`;
+  const res = await fetch(url, { headers });
+  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in Settings.`);
+  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}.`);
+  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}).`);
+  return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
+}
+async function triggerRefresh() {
+  const { owner, repo, pat } = getSettings();
+  if (!pat) { toast('Add a GitHub PAT in Settings to use Refresh Data', 'error'); return; }
+  const btn = document.getElementById('refresh-btn');
+  btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
+      method:'POST', headers:{'Authorization':`Bearer ${pat}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+      body: JSON.stringify({ ref:'main' })
+    });
+    (res.ok||res.status===204) ? toast('Sync triggered \u2014 data will refresh in ~2 min','success') : toast('Sync failed. Check your PAT in Settings.','error');
+  } catch(e) { toast('Network error \u2014 could not trigger sync','error'); }
+  finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
+}
+
+// ── UI ──
+let selectedClient = null;
+function renderGrids() {
+  ['general','project','location'].forEach(struct => {
+    const grid = document.getElementById('grid-' + struct);
+    if (!grid) return;
+    grid.innerHTML = CLIENTS.filter(c => c.structure === struct).map(c => {
+      const sk = c.key.replace(/[^a-z0-9]/gi,'_');
+      const ts = localStorage.getItem('cs-last-report-' + sk);
+      const lr = ts ? new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+      return '<div class="client-card" id="cc-' + sk + '" onclick="pickClient(\'' + c.key.replace(/'/g,"\\'").replace(/&/g,'\\x26') + '\')">' +
+        '<div class="client-name">' + c.name + '</div>' +
+        '<span class="client-badge ' + STRUCT[struct].badgeClass + '">' + STRUCT[struct].label + '</span>' +
+        (lr ? '<div style="font-size:9px;color:var(--muted);margin-top:4px">' + lr + '</div>' : '') +
+        '</div>';
+    }).join('');
+  });
+}
+function pickClient(key) {
+  selectedClient = CLIENTS.find(c => c.key === key);
+  document.querySelectorAll('.client-card').forEach(el => el.classList.remove('selected'));
+  const sk = key.replace(/[^a-z0-9]/gi,'_');
+  const card = document.getElementById('cc-' + sk);
+  if (card) card.classList.add('selected');
+  updateCustomFieldsUI();
+  _selectedReports.clear();
+  ['cs','cd','es','ed'].forEach(id => {
+    const c = document.getElementById('rc-' + id); if (c) c.classList.remove('on');
+  });
+  setTimeout(function() { goTo(2); }, 80);
+}
+function updateCustomFieldsUI() {
+  if (!selectedClient) return;
+  const fields = CLIENT_FIELD_CONFIG[selectedClient.key] || [];
+  ['cd','ed'].forEach(prefix => {
+    const hdr = document.getElementById(prefix + '-cf-hdr');
+    const list = document.getElementById(prefix + '-cf-list');
+    if (!hdr || !list) return;
+    if (!fields.length) { hdr.style.display = 'none'; list.innerHTML = ''; return; }
+    hdr.style.display = '';
+    list.innerHTML = fields.map(f =>
+      '<label class="cb-item"><input type="checkbox" id="' + prefix + '-cf-' + f.key.replace(/[^a-z0-9]/gi,'_') + '" ' + (f.on?'checked':'') + '> ' + f.label + '</label>'
+    ).join('');
+  });
+}
+function getCustomFields(prefix) {
+  const fields = CLIENT_FIELD_CONFIG[selectedClient?.key] || [];
+  return fields.filter(f => {
+    const el = document.getElementById(prefix + '-cf-' + f.key.replace(/[^a-z0-9]/gi,'_'));
+    return el && el.checked;
+  });
+}
+
+// ── Navigation ──
+let _currentStep = 1;
+function goTo(n) {
+  [1,2,3].forEach(i => { const el = document.getElementById('step-' + i); if (el) el.style.display = 'none'; });
+  const next = document.getElementById('step-' + n);
+  if (!next) return;
+  next.style.display = '';
+  next.classList.remove('fading');
+  void next.offsetWidth;
+  next.classList.add('fading');
+  _currentStep = n;
+  if (n === 2 && selectedClient) {
+    const s = STRUCT[selectedClient.structure];
+    document.getElementById('banner-name').textContent   = selectedClient.name;
+    document.getElementById('banner-struct').textContent = s.groupLabel ? s.label + ' \u2014 Shown by ' + s.groupLabel : s.label;
+    document.getElementById('cd-entity-lbl').textContent = s.groupLabel ? s.groupLabel + ' List' : 'Entity List';
+    if (!document.getElementById('g-date').value)
+      document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
+    updateGenBtn();
   }
+}
+
+// ── Report selection ──
+let _selectedReports = new Set();
+function toggleReport(id) {
+  const card = document.getElementById('rc-' + id);
+  if (_selectedReports.has(id)) { _selectedReports.delete(id); if (card) card.classList.remove('on'); }
+  else                          { _selectedReports.add(id);    if (card) card.classList.add('on'); }
+  updateGenBtn();
+}
+function updateGenBtn() {
+  const btn = document.getElementById('gen-btn');
+  if (btn) btn.disabled = _selectedReports.size === 0;
 }
 
 // ──────────────────────────────────────────────
