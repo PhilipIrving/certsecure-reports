@@ -176,6 +176,22 @@
     }
 
     /* ── Page header ── */
+    /* Tab bar */
+    .tab-bar { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 22px; flex-shrink: 0; }
+    .tab-btn { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted); padding: 10px 18px 11px; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
+    .tab-btn:hover { color: var(--navy); }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    /* Config table */
+    .cfg-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .cfg-table th { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 8px 12px; border-bottom: 2px solid var(--border); text-align: left; }
+    .cfg-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .cfg-table tr:hover td { background: var(--bg); }
+    .active-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; padding: 2px 8px; border-radius: 12px; }
+    .active-badge.on { background: var(--green-bg, #E6F5EF); color: var(--green); }
+    .active-badge.off { background: var(--bg); color: var(--muted); }
+    .struct-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 2px 8px; border-radius: 12px; background: var(--blue-light); color: var(--blue); }
+    .cfg-search { width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color .15s; }
+    .cfg-search:focus { border-color: var(--blue); }
     .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
     .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
     .page-hdr { margin-bottom: 14px; flex-shrink: 0; }
@@ -334,9 +350,6 @@
     }
 
     /* ── Filters ── */
-    .filter-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-    .filter-grp { flex: 1; min-width: 130px; }
-    .filter-lbl { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
     select, input[type="text"], input[type="date"] {
       width: 100%;
       padding: 7px 10px;
@@ -452,7 +465,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.04</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.05</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -722,6 +735,15 @@
 <div id="main-app" style="display:none">
 <main class="main">
 
+  <!-- ── TAB BAR ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-reports" onclick="switchTab('reports')">Report Generator</button>
+    <button class="tab-btn" id="tab-btn-config" onclick="switchTab('config')">Client Configuration</button>
+  </div>
+
+  <!-- ── TAB: REPORT GENERATOR ── -->
+  <div id="tab-reports">
+
   <!-- ── STEP 1: CLIENT SELECTION ── -->
   <div id="step-1" class="step-panel">
     <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -826,10 +848,16 @@
               <label class="cb-item"><input type="checkbox" id="es-openrate" checked> Open Rate Breakdown</label>
               <label class="cb-item"><input type="checkbox" id="es-delivery" checked> Deliverability Status</label>
               <label class="cb-item"><input type="checkbox" id="es-issues" checked> Delivery Issue Breakdown (Hard Bounce, Rejected, etc.)</label>
-              <label class="cb-item"><input type="checkbox" id="es-60day" checked> 60-Day Activity Window &amp; Funnel</label>
+              <label class="cb-item"><input type="checkbox" id="es-60day" checked> Activity Window &amp; Funnel (based on selected window)</label>
               <label class="cb-item"><input type="checkbox" id="es-nceng" checked> NC Insured Engagement Rate</label>
               <label class="cb-item"><input type="checkbox" id="es-topsubjects"> Top Email Subjects by Open Rate</label>
             </div>
+            <div class="sec-div">Engagement Window</div>
+            <select id="es-window">
+              <option value="60">Last 60 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
           </div>
         </div>
 
@@ -918,26 +946,6 @@
       </div>
     </div>
 
-    <div style="margin-top:14px;flex-shrink:0">
-      <div class="sec-div">Global Filters</div>
-      <div class="filter-row">
-        <div class="filter-grp">
-          <div class="filter-lbl">Expiring Within</div>
-          <select id="g-expiring">
-            <option value="">No filter</option>
-            <option value="7">7 days</option>
-            <option value="30">30 days</option>
-            <option value="60">60 days</option>
-            <option value="90">90 days</option>
-          </select>
-        </div>
-        <div class="filter-grp">
-          <div class="filter-lbl">Report Date</div>
-          <input type="date" id="g-date">
-        </div>
-      </div>
-    </div>
-
     <div class="action-bar" style="flex-shrink:0">
       <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
       <button class="btn btn-primary" id="gen-btn" onclick="generate()" disabled>
@@ -1001,11 +1009,91 @@
     </div>
   </div>
 
+  </div><!-- /tab-reports -->
+
+  <!-- ── TAB: CLIENT CONFIGURATION ── -->
+  <div id="tab-config" style="display:none">
+    <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div>
+        <div class="page-title">Client Configuration</div>
+        <div class="page-sub">Manage clients, go-live dates, and program settings</div>
+      </div>
+      <button class="btn btn-primary" onclick="openAddClient()">+ Add Client</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+        <input type="text" class="cfg-search" id="cfg-search" placeholder="Search clients…" oninput="renderConfigTable(this.value)">
+        <button class="btn btn-secondary" onclick="loadAndRenderConfig()" style="white-space:nowrap;flex-shrink:0">↻ Reload</button>
+      </div>
+      <div id="cfg-table-wrap">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Switch to this tab to load client configuration.</div>
+      </div>
+    </div>
+  </div><!-- /tab-config -->
+
+  <!-- ── CLIENT EDIT MODAL ── -->
+  <div class="overlay" id="client-edit-overlay">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-hdr">
+        <span class="modal-title" id="client-modal-title">Edit Client</span>
+        <button class="modal-close" onclick="closeClientModal()">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-grp" style="grid-column:1/-1">
+          <label class="form-lbl">Client Name <span id="client-name-lock" style="color:var(--muted);font-weight:400;font-size:10px">(locked — matches CSV data)</span></label>
+          <input type="text" id="ce-client-name" placeholder="e.g. Canadian Pacific Kansas City">
+          <div class="form-hint" id="ce-name-hint" style="display:none">Must exactly match the <code>client</code> column in your CSVs.</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">API Name <span style="color:var(--muted);font-weight:400;font-size:10px">(rp_common_name)</span></label>
+          <input type="text" id="ce-api-name" placeholder="e.g. cpkansascity">
+          <div class="form-hint">Used for API access and logos</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Structure</label>
+          <select id="ce-structure">
+            <option value="general">General</option>
+            <option value="project">Project (Subcontractors)</option>
+            <option value="location">Location (Tenants)</option>
+          </select>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Program Start Date</label>
+          <input type="date" id="ce-program-start">
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Go-Live Date</label>
+          <input type="date" id="ce-go-live">
+        </div>
+        <div class="form-grp" style="display:flex;align-items:center;gap:10px;padding-top:20px">
+          <label style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="ce-active" style="width:15px;height:15px;accent-color:var(--blue)"> Active
+          </label>
+          <span style="font-size:11px;color:var(--muted)">Inactive clients are hidden from reports</span>
+        </div>
+      </div>
+
+      <div id="ce-msg" style="display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:12px"></div>
+
+      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:20px;align-items:center">
+        <div>
+          <button id="ce-delete-btn" class="btn" style="background:#FDF0EE;color:var(--red);border-color:#F5CFC9;display:none" onclick="deleteClient()">🗑 Delete Client</button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" onclick="closeClientModal()">Cancel</button>
+          <button class="btn btn-primary" id="ce-save-btn" onclick="saveClientEdit()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
-<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.04</div>
+<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.05</div>
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
@@ -1288,7 +1376,11 @@ function toggleCsvPaths() {
 }
 
 function onLoginSuccess(user) {
-  renderGrids();
+  // Load clients from config/clients.json (replaces hardcoded array)
+  loadClientsFromConfig().then(ok => {
+    if (ok) console.log(`Loaded ${CLIENTS.length} active clients from clients.json`);
+    renderGrids();
+  });
 }
 
 // ── Enter key + session restore ──
@@ -1339,27 +1431,6 @@ function initDark() {
 }
 
 // ──────────────────────────────────────────────
-// CLIENT CONFIGURATION
-// ──────────────────────────────────────────────
-const CLIENTS = [
-  { name: "A G Equipment Company",               key: "A G Equipment Company",               structure: "general"  },
-  { name: "Canadian Pacific Kansas City",         key: "Canadian Pacific Kansas City",         structure: "general"  },
-  { name: "Capital Railroad Contracting, Inc.",   key: "Capital Railroad Contracting, Inc.",   structure: "general"  },
-  { name: "Kolb Grading",                         key: "Kolb Grading",                         structure: "general"  },
-  { name: "Mizuho Bank",                          key: "Mizuho Bank",                          structure: "general"  },
-  { name: "Musselman & Hall Contractors, LLC",    key: "Musselman & Hall Contractors, LLC",    structure: "general"  },
-  { name: "Paragon Geophysical Services, Inc.",   key: "Paragon Geophysical Services, Inc.",   structure: "general"  },
-  { name: "Trinity Chemical Industries LLC",      key: "Trinity Chemical Industries LLC",      structure: "general"  },
-  { name: "United Coal Company LLC",              key: "United Coal Company LLC",              structure: "general"  },
-  { name: "Bauer Foundation Corp.",               key: "Bauer Foundation Corp.",               structure: "project"  },
-  { name: "ESS Companies",                        key: "ESS Companies",                        structure: "project"  },
-  { name: "Scandroli Construction",               key: "Scandroli Construction",               structure: "project"  },
-  { name: "Skyline Developers Construction LLC",  key: "Skyline Developers Construction LLC",  structure: "project"  },
-  { name: "EMMES",                                key: "EMMES",                                structure: "location" },
-  { name: "Gart Properties",                      key: "Gart Properties",                      structure: "location" },
-  { name: "The Abbey Management Company",         key: "The Abbey Management Company",         structure: "location" },
-];
-
 const STRUCT = {
   general:  { label: "General",        groupLabel: null,          badgeClass: "badge-general"  },
   project:  { label: "Subcontractors", groupLabel: "Project",     badgeClass: "badge-project"  },
@@ -1799,6 +1870,281 @@ ${topNCAll.length ? `
 </body></html>`;
 }
 
+// ──────────────────────────────────────────────
+// CLIENTS DATA — loaded dynamically from clients.json
+// ──────────────────────────────────────────────
+let _allClientsData   = [];   // full JSON array from clients.json
+let _clientsFileSHA   = '';   // for write-back
+let _clientsFileLoaded = false;
+
+// Fallback hardcoded list (used if JSON load fails)
+const CLIENTS_FALLBACK = [
+  { client_name:"A G Equipment Company",              rp_common_name:"agequipment",     structure:"general",  active:true },
+  { client_name:"Canadian Pacific Kansas City",        rp_common_name:"cpkansascity",    structure:"general",  active:true },
+  { client_name:"Capital Railroad Contracting, Inc.",  rp_common_name:"capitalroad",     structure:"general",  active:true },
+  { client_name:"Kolb Grading",                        rp_common_name:"kolbgrading",     structure:"general",  active:true },
+  { client_name:"Mizuho Bank",                         rp_common_name:"mizuhobank",      structure:"general",  active:true },
+  { client_name:"Musselman & Hall Contractors, LLC",   rp_common_name:"musselmanhall",   structure:"general",  active:true },
+  { client_name:"Paragon Geophysical Services, Inc.",  rp_common_name:"paragongeo",      structure:"general",  active:true },
+  { client_name:"Trinity Chemical Industries LLC",     rp_common_name:"trinitychemical", structure:"general",  active:true },
+  { client_name:"United Coal Company LLC",             rp_common_name:"unitedcoal",      structure:"general",  active:true },
+  { client_name:"Bauer Foundation Corp.",              rp_common_name:"bauerfoundation", structure:"project",  active:true },
+  { client_name:"ESS Companies",                       rp_common_name:"emerysappandsons",structure:"project",  active:true },
+  { client_name:"Scandroli Construction",              rp_common_name:"scandroli",       structure:"project",  active:true },
+  { client_name:"Skyline Developers Construction LLC", rp_common_name:"skyline",         structure:"project",  active:true },
+  { client_name:"EMMES",                               rp_common_name:"emmes",           structure:"location", active:true },
+  { client_name:"Gart Properties",                     rp_common_name:"gartproperties",  structure:"location", active:true },
+  { client_name:"The Abbey Management Company",        rp_common_name:"theabbeycompany", structure:"location", active:true },
+];
+
+// Live CLIENTS array (rebuilt from JSON) and META map
+let CLIENTS = buildClientsArray(CLIENTS_FALLBACK);
+let CLIENT_META_MAP = {};  // client_name -> full JSON config (go_live_date etc)
+
+function buildClientsArray(data) {
+  return data.filter(c => c.active !== false).map(c => ({
+    name: c.client_name,
+    key:  c.client_name,
+    structure: c.structure || 'general',
+  }));
+}
+
+async function loadClientsFromConfig() {
+  const s = getSettings();
+  if (!s.pat) return false;
+  try {
+    const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/config/clients.json?ref=${s.branch}`;
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${s.pat}`, 'Accept': 'application/vnd.github.v3+json' } });
+    if (!res.ok) return false;
+    const fileInfo = await res.json();
+    _clientsFileSHA = fileInfo.sha;
+    const raw = atob(fileInfo.content.replace(/\n/g,''));
+    const data = JSON.parse(raw);
+    _allClientsData = data.clients || [];
+    _clientsFileLoaded = true;
+    // Rebuild live arrays
+    CLIENTS = buildClientsArray(_allClientsData);
+    CLIENT_META_MAP = {};
+    _allClientsData.forEach(c => { CLIENT_META_MAP[c.client_name] = c; });
+    return true;
+  } catch(e) {
+    console.warn('Could not load clients.json:', e.message);
+    return false;
+  }
+}
+
+async function saveClientsToConfig(updatedClients) {
+  const s = getSettings();
+  if (!s.pat) throw new Error('No PAT configured in Settings');
+  // Re-fetch SHA in case it changed
+  const getRes = await fetch(`https://api.github.com/repos/${s.owner}/${s.repo}/contents/config/clients.json?ref=${s.branch}`, {
+    headers: { 'Authorization': `Bearer ${s.pat}`, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (!getRes.ok) throw new Error('Could not fetch current clients.json');
+  const fileInfo = await getRes.json();
+  const sha = fileInfo.sha;
+
+  const payload = JSON.stringify({ _instructions: {
+    how_to_add_client: "Use the Client Configuration tab in the Report Generator app.",
+    date_format: "YYYY-MM-DD",
+    structure_options: "general | project | location",
+  }, clients: updatedClients }, null, 2);
+
+  const putRes = await fetch(`https://api.github.com/repos/${s.owner}/${s.repo}/contents/config/clients.json`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${s.pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+    body: JSON.stringify({ message: 'config: update clients.json via Report Generator', content: btoa(unescape(encodeURIComponent(payload))), sha, branch: s.branch })
+  });
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(()=>({}));
+    throw new Error(err.message || `HTTP ${putRes.status}`);
+  }
+  const result = await putRes.json();
+  _clientsFileSHA = result.content?.sha || sha;
+  // Rebuild local arrays
+  _allClientsData = updatedClients;
+  CLIENTS = buildClientsArray(_allClientsData);
+  CLIENT_META_MAP = {};
+  _allClientsData.forEach(c => { CLIENT_META_MAP[c.client_name] = c; });
+}
+
+// ──────────────────────────────────────────────
+// TAB NAVIGATION
+// ──────────────────────────────────────────────
+function switchTab(tab) {
+  ['reports','config'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'config') loadAndRenderConfig();
+}
+
+async function loadAndRenderConfig() {
+  const wrap = document.getElementById('cfg-table-wrap');
+  wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading clients.json…</div>';
+  const ok = await loadClientsFromConfig();
+  if (!ok) {
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">Could not load clients.json — check your PAT and repo name in Settings.</div>';
+    return;
+  }
+  renderConfigTable();
+}
+
+// ──────────────────────────────────────────────
+// CONFIG TABLE
+// ──────────────────────────────────────────────
+const STRUCT_LABEL = { general:'General', project:'Subcontractors', location:'Tenants' };
+
+function renderConfigTable(filter='') {
+  const q = (filter||'').toLowerCase();
+  const rows = _allClientsData
+    .filter(c => !q || c.client_name.toLowerCase().includes(q) || (c.rp_common_name||'').toLowerCase().includes(q))
+    .sort((a,b) => a.client_name.localeCompare(b.client_name));
+
+  if (!rows.length) {
+    document.getElementById('cfg-table-wrap').innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No clients match.</div>';
+    return;
+  }
+
+  const tbody = rows.map((c,i) => `
+    <tr>
+      <td style="font-weight:600">${esc(c.client_name)}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(c.rp_common_name||'')}</td>
+      <td><span class="struct-badge">${STRUCT_LABEL[c.structure]||c.structure}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${c.program_start_date||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${c.go_live_date||'—'}</td>
+      <td><span class="active-badge ${c.active!==false?'on':'off'}">${c.active!==false?'Active':'Inactive'}</span></td>
+      <td>
+        <button class="btn-sm-ghost" onclick="openEditClient(${_allClientsData.indexOf(c)})">Edit</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('cfg-table-wrap').innerHTML = `
+    <table class="cfg-table">
+      <thead><tr>
+        <th>Client Name</th><th>API Name</th><th>Structure</th>
+        <th>Program Start</th><th>Go-Live</th><th>Status</th><th style="width:60px"></th>
+      </tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">${rows.length} of ${_allClientsData.length} clients shown</div>`;
+}
+
+// ──────────────────────────────────────────────
+// CLIENT EDIT / ADD MODAL
+// ──────────────────────────────────────────────
+let _editingIndex = null; // null = new client
+
+function openAddClient() {
+  _editingIndex = null;
+  document.getElementById('client-modal-title').textContent = 'Add New Client';
+  document.getElementById('ce-client-name').value = '';
+  document.getElementById('ce-client-name').disabled = false;
+  document.getElementById('ce-name-hint').style.display = '';
+  document.getElementById('client-name-lock').style.display = 'none';
+  document.getElementById('ce-api-name').value = '';
+  document.getElementById('ce-structure').value = 'general';
+  document.getElementById('ce-program-start').value = '';
+  document.getElementById('ce-go-live').value = '';
+  document.getElementById('ce-active').checked = true;
+  document.getElementById('ce-delete-btn').style.display = 'none';
+  document.getElementById('ce-save-btn').textContent = 'Add Client';
+  document.getElementById('ce-msg').style.display = 'none';
+  document.getElementById('client-edit-overlay').classList.add('open');
+}
+
+function openEditClient(idx) {
+  _editingIndex = idx;
+  const c = _allClientsData[idx];
+  document.getElementById('client-modal-title').textContent = 'Edit Client';
+  document.getElementById('ce-client-name').value = c.client_name || '';
+  document.getElementById('ce-client-name').disabled = true;
+  document.getElementById('ce-name-hint').style.display = 'none';
+  document.getElementById('client-name-lock').style.display = '';
+  document.getElementById('ce-api-name').value = c.rp_common_name || '';
+  document.getElementById('ce-structure').value = c.structure || 'general';
+  document.getElementById('ce-program-start').value = c.program_start_date || '';
+  document.getElementById('ce-go-live').value = c.go_live_date || '';
+  document.getElementById('ce-active').checked = c.active !== false;
+  document.getElementById('ce-delete-btn').style.display = '';
+  document.getElementById('ce-save-btn').textContent = 'Save Changes';
+  document.getElementById('ce-msg').style.display = 'none';
+  document.getElementById('client-edit-overlay').classList.add('open');
+}
+
+function closeClientModal() {
+  document.getElementById('client-edit-overlay').classList.remove('open');
+}
+
+async function saveClientEdit() {
+  const btn = document.getElementById('ce-save-btn');
+  const msgEl = document.getElementById('ce-msg');
+  const name = document.getElementById('ce-client-name').value.trim();
+  const api  = document.getElementById('ce-api-name').value.trim();
+  const struct = document.getElementById('ce-structure').value;
+  const progStart = document.getElementById('ce-program-start').value;
+  const goLive    = document.getElementById('ce-go-live').value;
+  const active    = document.getElementById('ce-active').checked;
+
+  if (!name) { showCEMsg('Client name is required.', true); return; }
+  if (!api)  { showCEMsg('API name (rp_common_name) is required.', true); return; }
+
+  // Check duplicate name on add
+  if (_editingIndex === null) {
+    if (_allClientsData.some(c => c.client_name === name)) {
+      showCEMsg(`A client named "${name}" already exists.`, true); return;
+    }
+  }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const updated = [..._allClientsData];
+  const entry = { client_name: name, rp_common_name: api, program_start_date: progStart, go_live_date: goLive, structure: struct, active };
+
+  if (_editingIndex === null) {
+    updated.push(entry);
+  } else {
+    updated[_editingIndex] = { ...updated[_editingIndex], ...entry };
+  }
+
+  try {
+    await saveClientsToConfig(updated);
+    toast((_editingIndex === null ? 'Client added' : 'Client saved') + ' ✓', 'success');
+    closeClientModal();
+    renderConfigTable(document.getElementById('cfg-search')?.value || '');
+    renderGrids(); // refresh report picker
+  } catch(e) {
+    showCEMsg('Save failed: ' + e.message, true);
+  }
+  btn.disabled = false;
+  btn.textContent = _editingIndex === null ? 'Add Client' : 'Save Changes';
+}
+
+async function deleteClient() {
+  if (_editingIndex === null) return;
+  const c = _allClientsData[_editingIndex];
+  if (!confirm(`Delete "${c.client_name}"?\n\nThis removes them from clients.json. Their CSV data is unaffected.`)) return;
+  const btn = document.getElementById('ce-delete-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  const updated = _allClientsData.filter((_, i) => i !== _editingIndex);
+  try {
+    await saveClientsToConfig(updated);
+    toast(`${c.client_name} removed`, 'success');
+    closeClientModal();
+    renderConfigTable(document.getElementById('cfg-search')?.value || '');
+    renderGrids();
+  } catch(e) {
+    showCEMsg('Delete failed: ' + e.message, true);
+    btn.disabled = false; btn.textContent = '🗑 Delete Client';
+  }
+}
+
+function showCEMsg(msg, isErr) {
+  const el = document.getElementById('ce-msg');
+  el.textContent = msg;
+  el.style.cssText = `display:block;font-size:12px;padding:8px 12px;border-radius:7px;background:${isErr?'var(--red-bg,#FDF0EE)':'var(--green-bg,#E6F5EF)'};color:${isErr?'var(--red)':'var(--green)'}`;
+}
+
 // ── UI ──
 let selectedClient = null;
 function renderGrids() {
@@ -1872,8 +2218,6 @@ function goTo(n) {
     document.getElementById('banner-name').textContent   = selectedClient.name;
     document.getElementById('banner-struct').textContent = s.groupLabel ? s.label + ' \u2014 Shown by ' + s.groupLabel : s.label;
     document.getElementById('cd-entity-lbl').textContent = s.groupLabel ? s.groupLabel + ' List' : 'Entity List';
-    if (!document.getElementById('g-date').value)
-      document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
     updateGenBtn();
   }
 }
@@ -2037,9 +2381,10 @@ async function generate() {
       catch(e) { console.warn('notifications skip:', e.message); }
     }
 
-    const reportDate   = document.getElementById('g-date').value || today();
+    const reportDate   = new Date().toISOString().split('T')[0];
     const statusFilter = document.getElementById('cd-status').value;
     const engWindow    = parseInt(document.getElementById('ed-window').value) || 60;
+    const esWindow    = parseInt(document.getElementById('es-window')?.value) || 60;
     const downloads    = [];
 
     if (E.cd) {
@@ -2058,7 +2403,7 @@ async function generate() {
     }
     if (E.es) {
       setProgress('Building Engagement Summary\u2026', 'Generating PDF', 1);
-      downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate, engWindow }), filename:`${selectedClient.name} \u2014 Engagement Summary.pdf` });
+      downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate, engWindow: esWindow }), filename:`${selectedClient.name} \u2014 Engagement Summary.pdf` });
     }
 
     if (E.yer) {
@@ -2616,7 +2961,9 @@ async function buildEngagementDetailXL(insureds, notifications, { engWindow, rep
 
     // Compute stats upfront
     const noCoiRows   = active.filter(r=>!hasEmail(r,sentEmails));
-    const noEngRows   = active.filter(r=>!hasEmail(r,openedEmails)&&!hasEmail(r,clickedEmails));
+    // No Engagement Since Go-Live: opened or clicked since the client's actual go-live date
+    const openedSinceGoLive = new Set(notifications.filter(n=>(isEngOpen(n)||isEngClick(n))&&new Date(n[C.sent_at])>=goLiveCutoff).map(normEm).filter(Boolean));
+    const noEngRows   = active.filter(r=>hasEmail(r,sentEmails)&&!hasEmail(r,openedSinceGoLive));
     const recentOpenS = new Set(notifications.filter(n=>isEngOpen(n)&&new Date(n[C.sent_at])>=cutoff).map(normEm).filter(Boolean));
     const ncNoEngRows = active.filter(r=>normStatus(r[C.status])==='non_compliant'&&!hasEmail(r,recentOpenS));
     const issueRows   = notifications.filter(isEngIssue);
@@ -2625,7 +2972,10 @@ async function buildEngagementDetailXL(insureds, notifications, { engWindow, rep
     const allDates = notifications.map(n=>n[C.sent_at]).filter(Boolean).sort();
     const fmtEngDate = ds => { try { return new Date(ds).toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); } catch(e){ return ds; } };
     const dataRange  = allDates.length ? `${fmtEngDate(allDates[0])} \u2014 ${fmtEngDate(allDates[allDates.length-1])}` : 'N/A';
-    const goLive     = allDates.length ? fmtEngDate(allDates[0]) : 'N/A';
+    // Use go_live_date from clients.json if available, otherwise fall back to first engagement date
+    const metaGoLive = CLIENT_META_MAP[selectedClient.key]?.go_live_date;
+    const goLive     = metaGoLive ? fmtEngDate(metaGoLive) : (allDates.length ? fmtEngDate(allDates[0]) : 'N/A');
+    const goLiveCutoff = metaGoLive ? new Date(metaGoLive) : (allDates.length ? new Date(allDates[0]) : new Date(0));
 
     // Header block
     const t1 = ws0.addRow([`${shortName(selectedClient.name)} \u2014 Engagement Detail`]);
