@@ -862,12 +862,9 @@
 
       </div><!-- /report-grid -->
 
-      <!-- Server-generated reports (GitHub Actions) -->
+      <!-- Additional Reports -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
-          Server-Generated Reports
-          <span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">via GitHub Actions (~2–4 min) · files appear in Recent Activity</span>
-        </div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Additional Reports</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
 
           <!-- Year End Review -->
@@ -1459,98 +1456,13 @@ async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn');
   btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/evident-sync.yml/dispatches`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
       method:'POST', headers:{'Authorization':`Bearer ${pat}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
       body: JSON.stringify({ ref:'main' })
     });
     (res.ok||res.status===204) ? toast('Sync triggered \u2014 data will refresh in ~2 min','success') : toast('Sync failed. Check your PAT in Settings.','error');
   } catch(e) { toast('Network error \u2014 could not trigger sync','error'); }
   finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
-}
-
-// ──────────────────────────────────────────────
-// GITHUB ACTIONS — SERVER-SIDE REPORT GENERATION
-// ──────────────────────────────────────────────
-async function triggerActionReport(inputs, expectedFilename, label) {
-  const { owner, repo, pat } = getSettings();
-  if (!pat) { toast('Add a GitHub PAT with workflow scope in Settings to use server-generated reports.', 'error'); return; }
-
-  // Add a pending entry to the notification drawer
-  const pendingId = 'pending-' + Date.now();
-  _notifs.unshift({ msg: label + ' \u2014 Generating\u2026', type: 'info', time: new Date(), _pending: true, _pendingId: pendingId });
-  if (_notifs.length > 15) _notifs.pop();
-  renderNotifList();
-  const drawer = document.getElementById('notif-drawer');
-  if (drawer) { drawer.style.display = ''; _unread = 0; updateNotifBadge(); }
-
-  try {
-    // Fire the workflow
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/evident-generate.yml/dispatches`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
-      body: JSON.stringify({ ref: 'main', inputs })
-    });
-    if (!res.ok && res.status !== 204) {
-      const err = await res.json().catch(() => ({}));
-      const msg = res.status === 404
-        ? 'Workflow not found. Check repo name in Settings and ensure evident-generate.yml exists.'
-        : res.status === 422
-        ? 'Workflow trigger failed. Ensure your PAT has the \'workflow\' scope in GitHub.'
-        : (err.message || `HTTP ${res.status}`);
-      throw new Error(msg);
-    }
-    toast(`\u2713 ${label} queued \u2014 check Recent Activity in ~3 min`, 'success');
-
-    // Start polling for the output file
-    pollForReport(owner, repo, pat, expectedFilename, label, pendingId);
-  } catch(e) {
-    updatePendingNotif(pendingId, label + ' \u2014 Failed: ' + e.message, 'error');
-    toast('Failed to trigger report: ' + e.message, 'error');
-  }
-}
-
-async function pollForReport(owner, repo, pat, filename, label, pendingId) {
-  const maxAttempts = 36; // 36 × 10s = 6 minutes
-  const interval    = 10000;
-  let attempts = 0;
-
-  const check = async () => {
-    attempts++;
-    try {
-      const url = `https://api.github.com/repos/${owner}/${repo}/contents/reports/${encodeURIComponent(filename)}`;
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': `Bearer ${pat}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const downloadUrl = data.download_url;
-        // Replace pending notif with download link
-        updatePendingNotif(pendingId, label, 'success', downloadUrl, filename);
-        toast(`\u2713 ${label} ready \u2014 check Recent Activity`, 'success');
-        return;
-      }
-    } catch(e) { /* keep polling */ }
-
-    if (attempts < maxAttempts) {
-      const elapsed = Math.round(attempts * interval / 60000);
-      updatePendingNotif(pendingId, `${label} \u2014 Generating\u2026 (~${elapsed}m elapsed)`, 'info');
-      setTimeout(check, interval);
-    } else {
-      updatePendingNotif(pendingId, `${label} \u2014 Timed out. Check GitHub Actions for status.`, 'error');
-    }
-  };
-
-  // Start polling after 60s initial delay (Actions take time to spin up)
-  setTimeout(check, 60000);
-}
-
-function updatePendingNotif(pendingId, msg, type, downloadUrl, filename) {
-  const n = _notifs.find(n => n._pendingId === pendingId);
-  if (n) {
-    n.msg = msg; n.type = type; n._pending = false;
-    if (downloadUrl) n._serverFile = { url: downloadUrl, filename };
-  }
-  renderNotifList();
 }
 
 // ── HUB-Wide Annual ──
@@ -1806,8 +1718,6 @@ function goTo(n) {
 
 // ── Report selection ──
 let _selectedReports = new Set();
-const SERVER_REPORTS = new Set([]); // all reports now built client-side
-
 function toggleReport(id) {
   const card = document.getElementById('rc-' + id);
   if (_selectedReports.has(id)) { _selectedReports.delete(id); if (card) card.classList.remove('on'); }
@@ -1816,13 +1726,7 @@ function toggleReport(id) {
 }
 function updateGenBtn() {
   const btn = document.getElementById('gen-btn');
-  if (!btn) return;
-  btn.disabled = _selectedReports.size === 0;
-  const hasServer = [..._selectedReports].some(id => SERVER_REPORTS.has(id));
-  const hasLocal  = [..._selectedReports].some(id => !SERVER_REPORTS.has(id));
-  if (hasServer && hasLocal)  { btn.textContent = '⬇ Generate All Reports'; }
-  else if (hasServer)         { btn.textContent = '🚀 Queue Server Reports'; }
-  else                        { btn.textContent = '⬇ Generate Reports'; }
+  if (btn) btn.disabled = _selectedReports.size === 0;
 }
 
 // ──────────────────────────────────────────────
@@ -1853,12 +1757,7 @@ function renderNotifList() {
   const colors = { success:'var(--green)', error:'var(--red)', info:'var(--blue)' };
   list.innerHTML = _notifs.map(n => {
     let actionBtn = '';
-    if (n._serverFile) {
-      // Direct download URL from GitHub repo
-      actionBtn = '<a href="' + n._serverFile.url + '" download="' + n._serverFile.filename + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↓ Download</a>';
-    } else if (n._pending) {
-      actionBtn = '<span style="font-size:10px;color:var(--muted);font-style:italic">queued…</span>';
-    } else if (n._download) {
+    if (n._download) {
       const dl = n._download;
       if (dl.type === 'excel') {
         const url = URL.createObjectURL(dl.blob);
