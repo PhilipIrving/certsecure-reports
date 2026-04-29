@@ -522,7 +522,6 @@
     <button class="btn-ghost" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     <span id="welcome-msg" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;display:none"></span>
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
-    <button class="btn-ghost" onclick="openHubWide()" style="background:rgba(56,114,184,0.25);border-color:rgba(56,114,184,0.5)" title="HUB-Wide Annual Review">🏢 HUB Annual</button>
     <button class="btn-ghost" onclick="openSettings()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
     
     <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
@@ -725,9 +724,14 @@
 
   <!-- ── STEP 1: CLIENT SELECTION ── -->
   <div id="step-1" class="step-panel">
-    <div class="page-hdr">
-      <div class="page-title">Report Generator</div>
-      <div class="page-sub">Select a client to get started</div>
+    <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="page-title">Report Generator</div>
+        <div class="page-sub">Select a client to get started</div>
+      </div>
+      <button class="btn btn-secondary" onclick="openHubWide()" style="gap:6px;white-space:nowrap;flex-shrink:0">
+        🏢 HUB-Wide Annual
+      </button>
     </div>
     <div class="card">
       <div class="struct-label">General — Shown by Entity Type</div>
