@@ -478,36 +478,46 @@
       </div>
       <div class="form-grp">
         <label class="form-lbl">GitHub Personal Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-        <input type="text" id="s-pat" placeholder="ghp_...">
+        <div style="position:relative">
+          <input type="password" id="s-pat" placeholder="ghp_..." style="padding-right:38px">
+          <button type="button" onclick="toggleReveal('s-pat',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px">👁</button>
+        </div>
         <div class="form-hint">Only needed for the "Refresh Data" button. Requires <strong>workflow</strong> scope.</div>
       </div>
+
       <hr class="modal-divider">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">CSV File Paths (in your repo)</div>
-      <div class="form-grp">
-        <label class="form-lbl">Insureds CSV</label>
-        <input type="text" id="s-insureds" placeholder="data/insureds.csv">
-        <div class="form-hint">Main compliance data — insured names, status, expiration</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:4px" onclick="toggleCsvPaths()">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">CSV File Paths</div>
+        <div id="csv-toggle-icon" style="font-size:11px;color:var(--muted)">▼ show</div>
       </div>
-      <div class="form-grp">
-        <label class="form-lbl">Coverages CSV</label>
-        <input type="text" id="s-coverages" placeholder="data/coverages.csv">
-        <div class="form-hint">Per-coverage data — used for Expiring Coverage sheet</div>
+      <div id="csv-paths" style="display:none">
+        <div class="form-grp" style="margin-top:10px">
+          <label class="form-lbl">Insureds CSV</label>
+          <input type="text" id="s-insureds" placeholder="data/insureds.csv">
+          <div class="form-hint">Main compliance data — insured names, status, expiration</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Coverages CSV</label>
+          <input type="text" id="s-coverages" placeholder="data/coverages.csv">
+          <div class="form-hint">Per-coverage data — used for Expiring Coverage sheet</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Criteria CSV</label>
+          <input type="text" id="s-criteria" placeholder="data/criteria.csv">
+          <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Custom Properties CSV</label>
+          <input type="text" id="s-customprops" placeholder="data/custom_properties.csv">
+          <div class="form-hint">Contract numbers, entity types, notification lists per insured</div>
+        </div>
+        <div class="form-grp">
+          <label class="form-lbl">Engagement CSV</label>
+          <input type="text" id="s-notifications" placeholder="data/engagement.csv">
+          <div class="form-hint">Email event data — used for all Engagement reports</div>
+        </div>
       </div>
-      <div class="form-grp">
-        <label class="form-lbl">Criteria CSV</label>
-        <input type="text" id="s-criteria" placeholder="data/criteria.csv">
-        <div class="form-hint">NC reasons per insured — used for Non-Compliance Reasons sheet</div>
-      </div>
-      <div class="form-grp">
-        <label class="form-lbl">Custom Properties CSV</label>
-        <input type="text" id="s-customprops" placeholder="data/custom_properties.csv">
-        <div class="form-hint">Contract numbers, entity types, notification lists per insured</div>
-      </div>
-      <div class="form-grp">
-        <label class="form-lbl">Engagement CSV</label>
-        <input type="text" id="s-notifications" placeholder="data/engagement.csv">
-        <div class="form-hint">Email event data — used for all Engagement reports</div>
-      </div>
+
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
         <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
@@ -552,19 +562,18 @@
 
     <!-- Admin tab -->
     <div id="stab-content-admin" style="display:none">
-      <div style="background:#EEF1F8;border-radius:8px;padding:12px 14px;font-size:12px;color:#5A6B7B;margin-bottom:16px;line-height:1.5">
-        The service role key enables user management. Find it in your Supabase dashboard under<br>
-        <strong>Project Settings → API → Secret keys → service_role</strong>.<br>
-        <span style="color:#C0392B;font-weight:600">Keep this key private — never share it publicly.</span>
+      <div style="background:#EEF1F8;border-radius:8px;padding:12px 14px;font-size:12px;color:#5A6B7B;margin-bottom:16px;line-height:1.6">
+        To enable user management, deploy the <strong>manage-users</strong> Edge Function to your Supabase project.<br>
+        See the setup instructions provided separately. Once deployed, paste the function URL below.
       </div>
       <div class="form-grp">
-        <label class="form-lbl">Supabase Service Role Key</label>
-        <input type="password" id="s-service-role" placeholder="eyJ...">
-        <div class="form-hint">Stored locally on this device only. Required to add/remove users.</div>
+        <label class="form-lbl">Edge Function URL</label>
+        <input type="text" id="s-edge-url" placeholder="https://nwcyavfkmbhcadtrvyqy.supabase.co/functions/v1/manage-users">
+        <div class="form-hint">Deployed automatically once you set up the Edge Function in Supabase.</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveAdminKey()">Save Key</button>
+        <button class="btn btn-primary" onclick="saveAdminKey()">Save</button>
       </div>
     </div>
 
@@ -795,7 +804,7 @@
 const SUPABASE_URL = 'https://nwcyavfkmbhcadtrvyqy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_qpgDwAfvcOQIixrV3uPK-w_HWwIg36o';
 
-let _supabase = null, _supabaseAdmin = null;
+let _supabase = null;
 
 function getSupabase() {
   if (!_supabase) {
@@ -806,15 +815,39 @@ function getSupabase() {
   return _supabase;
 }
 
-function getSupabaseAdmin() {
-  const key = localStorage.getItem('cs-service-role');
-  if (!key) return null;
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = supabase.createClient(SUPABASE_URL, key, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
-  }
-  return _supabaseAdmin;
+function getEdgeUrl() {
+  return localStorage.getItem('cs-edge-url') ||
+    `${SUPABASE_URL}/functions/v1/manage-users`;
+}
+
+async function callEdge(action, payload={}) {
+  const { data:{ session } } = await getSupabase().auth.getSession();
+  const token = session?.access_token;
+  const res = await fetch(getEdgeUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || SUPABASE_KEY}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
+}
+
+function toggleReveal(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text';  btn.textContent = '🙈'; }
+  else                        { el.type = 'password'; btn.textContent = '👁'; }
+}
+
+function toggleCsvPaths() {
+  const el   = document.getElementById('csv-paths');
+  const icon = document.getElementById('csv-toggle-icon');
+  const open = el.style.display === '';
+  el.style.display   = open ? 'none' : '';
+  icon.textContent   = open ? '▼ show' : '▲ hide';
 }
 
 // ── View switching ──
@@ -948,39 +981,43 @@ function switchSettingsTab(tab) {
   if (tab === 'users') loadUsers();
 }
 
-// ── User management ──
+// ── User management (via Edge Function) ──
 async function loadUsers() {
-  const admin = getSupabaseAdmin();
-  if (!admin) {
-    document.getElementById('users-need-key').style.display = '';
-    document.getElementById('users-panel').style.display    = 'none';
-    return;
-  }
   document.getElementById('users-need-key').style.display = 'none';
   document.getElementById('users-panel').style.display    = '';
-  document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>';
+  document.getElementById('users-list').innerHTML =
+    '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>';
 
   try {
-    const { data, error } = await admin.auth.admin.listUsers();
-    if (error) throw error;
-    const users = data.users || [];
-    if (!users.length) {
-      document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet.</div>';
+    const { users } = await callEdge('list');
+    if (!users?.length) {
+      document.getElementById('users-list').innerHTML =
+        '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet. Click + Add User to get started.</div>';
       return;
     }
     document.getElementById('users-list').innerHTML = users.map(u => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:8px;background:var(--white)">
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--navy)">${u.email}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Never'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at
+            ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+            : 'Never'}</div>
         </div>
         <div style="display:flex;gap:6px">
-          <button onclick="doResetUserPassword('${u.id}','${u.email}')" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Reset PW</button>
-          <button onclick="doDeleteUser('${u.id}','${u.email}')" style="font-size:11px;padding:4px 10px;border:1px solid #F5CFC9;border-radius:5px;background:#FDF0EE;cursor:pointer;color:#C0392B">Remove</button>
+          <button onclick="doResetUserPassword('${u.id}','${u.email}')"
+            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Reset PW</button>
+          <button onclick="doDeleteUser('${u.id}','${u.email}')"
+            style="font-size:11px;padding:4px 10px;border:1px solid #F5CFC9;border-radius:5px;background:#FDF0EE;cursor:pointer;color:#C0392B">Remove</button>
         </div>
       </div>`).join('');
   } catch(e) {
-    document.getElementById('users-list').innerHTML = `<div style="color:var(--red);font-size:12px;padding:10px">${e.message}</div>`;
+    document.getElementById('users-list').innerHTML =
+      `<div style="color:var(--muted);font-size:12px;padding:10px;background:#EEF1F8;border-radius:7px">
+        <strong>Edge Function not set up yet.</strong><br>
+        Go to Settings → Admin tab for setup instructions.
+        <details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px">Error detail</summary>
+        <div style="font-size:11px;color:var(--red);margin-top:4px">${e.message}</div></details>
+      </div>`;
   }
 }
 
@@ -988,44 +1025,54 @@ async function doAddUser() {
   const email = document.getElementById('new-user-email').value.trim();
   const pass  = document.getElementById('new-user-pass').value.trim();
   const msgEl = document.getElementById('add-user-msg');
-  if (!email || !pass) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent='Both fields are required.'; return; }
-  if (pass.length < 8) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent='Password must be at least 8 characters.'; return; }
 
-  const admin = getSupabaseAdmin();
-  if (!admin) return;
-  const { error } = await admin.auth.admin.createUser({ email, password: pass, email_confirm: true });
-  if (error) { msgEl.style.display='block'; msgEl.style.color='#C0392B'; msgEl.textContent=error.message; return; }
-  msgEl.style.display='block'; msgEl.style.color='#1A7F5A'; msgEl.textContent=`${email} added successfully.`;
-  document.getElementById('new-user-email').value=''; document.getElementById('new-user-pass').value='';
-  setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
+  if (!email || !pass) { showUserMsg(msgEl, 'Both fields are required.', true); return; }
+  if (pass.length < 8) { showUserMsg(msgEl, 'Password must be at least 8 characters.', true); return; }
+
+  try {
+    await callEdge('create', { email, password: pass });
+    showUserMsg(msgEl, `${email} added successfully.`, false);
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-pass').value  = '';
+    setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
+  } catch(e) { showUserMsg(msgEl, e.message, true); }
 }
 
 async function doDeleteUser(uid, email) {
-  if (!confirm(`Remove ${email}? They will lose access immediately.`)) return;
-  const admin = getSupabaseAdmin();
-  if (!admin) return;
-  const { error } = await admin.auth.admin.deleteUser(uid);
-  if (error) { toast(error.message,'error'); return; }
-  toast(`${email} removed`,'success'); loadUsers();
+  if (!confirm(`Remove ${email}?\nThey will lose access immediately.`)) return;
+  try {
+    await callEdge('delete', { userId: uid });
+    toast(`${email} removed`, 'success'); loadUsers();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function doResetUserPassword(uid, email) {
   const newPw = prompt(`Set a temporary password for ${email}:\n(At least 8 characters)`);
-  if (!newPw || newPw.length < 8) { if(newPw!==null) toast('Password must be at least 8 characters','error'); return; }
-  const admin = getSupabaseAdmin();
-  if (!admin) return;
-  const { error } = await admin.auth.admin.updateUserById(uid, { password: newPw });
-  if (error) { toast(error.message,'error'); return; }
-  toast(`Password reset for ${email}`,'success');
+  if (!newPw) return;
+  if (newPw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  try {
+    await callEdge('resetPassword', { userId: uid, password: newPw });
+    toast(`Password reset for ${email}`, 'success');
+  } catch(e) { toast(e.message, 'error'); }
 }
 
-function showAddUser() { document.getElementById('add-user-form').style.display=''; }
-function hideAddUser() { document.getElementById('add-user-form').style.display='none'; document.getElementById('add-user-msg').style.display='none'; }
+function showUserMsg(el, msg, isErr) {
+  el.style.display = 'block';
+  el.style.color   = isErr ? '#C0392B' : '#1A7F5A';
+  el.textContent   = msg;
+}
+
+function showAddUser() { document.getElementById('add-user-form').style.display = ''; }
+function hideAddUser() {
+  document.getElementById('add-user-form').style.display  = 'none';
+  document.getElementById('add-user-msg').style.display   = 'none';
+}
 
 function saveAdminKey() {
-  const key = document.getElementById('s-service-role').value.trim();
-  if (key) { localStorage.setItem('cs-service-role', key); _supabaseAdmin = null; toast('Admin key saved','success'); }
-  else { localStorage.removeItem('cs-service-role'); _supabaseAdmin = null; toast('Admin key cleared','success'); }
+  const url = document.getElementById('s-edge-url').value.trim();
+  if (url) localStorage.setItem('cs-edge-url', url);
+  else     localStorage.removeItem('cs-edge-url');
+  toast('Admin settings saved', 'success');
   closeSettings();
 }
 
@@ -1040,9 +1087,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // Check if this is a password reset redirect
   checkRecoveryToken();
-  // Pre-fill service role key if saved
-  const sr = localStorage.getItem('cs-service-role');
-  if (sr) document.getElementById('s-service-role').value = sr;
+  // Pre-fill edge URL if saved
+  const eu = localStorage.getItem('cs-edge-url');
+  if (eu) { const el = document.getElementById('s-edge-url'); if(el) el.value = eu; }
 });
 
 // ──────────────────────────────────────────────
