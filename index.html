@@ -452,7 +452,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.04</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.04</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -707,7 +707,7 @@
     </div>
     <div class="form-grp">
       <label class="form-lbl">Report Year</label>
-      <input type="text" id="hw-year" placeholder="e.g. 2025" maxlength="4" style="width:140px">
+      <input type="text" id="hw-year" placeholder="e.g. 2026" maxlength="4" style="width:140px">
       <div class="form-hint">Leave blank to use the most recent snapshot year.</div>
     </div>
     <div id="hw-msg" style="display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:10px"></div>
@@ -881,7 +881,7 @@
               <div class="sec-div">Options</div>
               <div class="form-grp">
                 <label class="form-lbl">Report Year</label>
-                <input type="text" id="yer-year" placeholder="e.g. 2025" maxlength="4" style="width:120px">
+                <input type="text" id="yer-year" placeholder="e.g. 2026" maxlength="4" style="width:120px">
                 <div class="form-hint">Reads from snapshots/YYYY/</div>
               </div>
               <div class="form-grp" style="margin-top:8px">
@@ -1007,7 +1007,7 @@
 </main>
 
 <div class="toast" id="toast"></div>
-<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.04</div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:var(--muted);z-index:50;pointer-events:none;letter-spacing:.04em">v0.04</div>
 </div><!-- end main-app -->
 
 
@@ -1475,7 +1475,7 @@ async function triggerRefresh() {
 // ──────────────────────────────────────────────
 async function triggerActionReport(inputs, expectedFilename, label) {
   const { owner, repo, pat } = getSettings();
-  if (!pat) { toast('A GitHub PAT is required in Settings to generate server-side reports.', 'error'); return; }
+  if (!pat) { toast('Add a GitHub PAT with workflow scope in Settings to use server-generated reports.', 'error'); return; }
 
   // Add a pending entry to the notification drawer
   const pendingId = 'pending-' + Date.now();
@@ -1494,7 +1494,12 @@ async function triggerActionReport(inputs, expectedFilename, label) {
     });
     if (!res.ok && res.status !== 204) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
+      const msg = res.status === 404
+        ? 'Workflow not found. Check repo name in Settings and ensure evident-generate.yml exists.'
+        : res.status === 422
+        ? 'Workflow trigger failed. Ensure your PAT has the \'workflow\' scope in GitHub.'
+        : (err.message || `HTTP ${res.status}`);
+      throw new Error(msg);
     }
     toast(`\u2713 ${label} queued \u2014 check Recent Activity in ~3 min`, 'success');
 
@@ -1554,7 +1559,7 @@ function updatePendingNotif(pendingId, msg, type, downloadUrl, filename) {
 function openHubWide() {
   document.getElementById('hubwide-overlay').classList.add('open');
   const yr = document.getElementById('hw-year');
-  if (yr && !yr.value) yr.value = String(new Date().getFullYear() - 1);
+  if (yr && !yr.value) yr.value = String(new Date().getFullYear());
 }
 function closeHubWide() {
   document.getElementById('hubwide-overlay').classList.remove('open');
@@ -1572,7 +1577,7 @@ async function triggerHubWide() {
     hub_wide_annual: 'true',
     report_year: year,
   };
-  const year_str  = year || String(new Date().getFullYear() - 1);
+  const year_str  = year || String(new Date().getFullYear());
   const filename  = `HUB-Wide - Annual Review ${year_str}.pdf`;
   const label     = `HUB-Wide Annual Review ${year_str}`;
 
@@ -1862,7 +1867,7 @@ async function generate() {
 
     if (E.yer) {
       setProgress('Building Year End Review\u2026', 'Fetching snapshot data', 1);
-      const yerYear     = document.getElementById('yer-year')?.value?.trim() || String(new Date().getFullYear() - 1);
+      const yerYear     = document.getElementById('yer-year')?.value?.trim() || String(new Date().getFullYear());
       const yerProducer = document.getElementById('yer-producer')?.value?.trim() || '';
       downloads.push({ label:`Year End Review ${yerYear}`, type:'pdf', html: await buildYearEndReviewHTML(yerYear, yerProducer), filename:`${selectedClient.name} \u2014 Year End Review ${yerYear}.pdf` });
     }
