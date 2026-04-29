@@ -3439,28 +3439,43 @@ ${topNC.length ? `
 // PRODUCER OVERVIEW PDF BUILDER
 // ──────────────────────────────────────────────
 async function buildProducerOverviewHTML(producerName, snapshotMonth) {
-  const client = selectedClient.key;
-  const year   = snapshotMonth ? snapshotMonth.split('-')[0] : String(new Date().getFullYear());
-  const month  = snapshotMonth || null;
+  const client    = selectedClient.key;
+  const structure = selectedClient.structure;
+  const year      = snapshotMonth ? snapshotMonth.split('-')[0] : String(new Date().getFullYear());
+  const month     = snapshotMonth || null;
 
-  // Fetch snapshot data
+  // ── Fetch snapshot data ──
   const insureds  = (await fetchSnapshotCSV(year, month, 'insureds.csv')).filter(r => r[C.client] === client);
   const active    = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
   const comp      = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
   const nc        = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
   const newp      = active.length - comp - nc;
+  const compRate  = active.length ? Math.round(comp/active.length*100) : 0;
 
   let coverages = [];
   try { coverages = (await fetchSnapshotCSV(year, month, 'coverages.csv')).filter(r => r[C.client] === client); } catch(e) {}
   let criteria = [];
   try { criteria  = (await fetchSnapshotCSV(year, month, 'criteria.csv')).filter(r => r[C.client] === client); } catch(e) {}
+  let engagement = [];
+  try { engagement = (await fetchSnapshotCSV(year, month, 'engagement.csv')).filter(r => r[C.notif_client] === client); } catch(e) {}
 
-  // Expiring coverage
-  const exp30 = cnt(coverages, r => expiringSoon(r[C.exp_date], 30));
-  const exp60 = cnt(coverages, r => expiringSoon(r[C.exp_date], 60));
-  const exp90 = cnt(coverages, r => expiringSoon(r[C.exp_date], 90));
+  // ── Entity type breakdown ──
+  const entityLabel = structure === 'project' ? 'Subcontractors' : structure === 'location' ? 'Tenants' : 'Vendors';
 
-  // NC reasons
+  // ── Engagement metrics ──
+  const normEm        = n => (n[C.notif_email]||'').trim().toLowerCase();
+  const sentSet       = new Set(engagement.filter(isEngSend).map(normEm).filter(Boolean));
+  const openSet       = new Set(engagement.filter(isEngOpen).map(normEm).filter(Boolean));
+  const issueSet      = new Set(engagement.filter(isEngIssue).map(normEm).filter(Boolean));
+  const totalSent     = sentSet.size;
+  const openRate      = totalSent ? Math.round(openSet.size/totalSent*100) : 0;
+  const platformActive= totalSent > 0;
+
+  // ── Expiring coverage ──
+  const exp30  = cnt(coverages, r => expiringSoon(r[C.exp_date], 30));
+  const exp90  = cnt(coverages, r => expiringSoon(r[C.exp_date], 90));
+
+  // ── NC reasons (top 3, simplified) ──
   const ncMap = {};
   criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
     (r[C.nc_reasons]||'').split(' | ').forEach(p => {
@@ -3471,98 +3486,159 @@ async function buildProducerOverviewHTML(producerName, snapshotMonth) {
   });
   const topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
 
-  // NC entities list (top 10)
-  const ncEntities = active.filter(r => normStatus(r[C.status]) === 'non_compliant').slice(0,10);
+  // ── Wins & Issues ──
+  const wins   = [];
+  const issues = [];
+  if (compRate >= 80) wins.push(`Strong compliance rate of ${compRate}% — ${comp} of ${active.length} entities are fully compliant.`);
+  if (compRate >= 90) wins.push(`Top-tier program performance — fewer than 1 in 10 entities is out of compliance.`);
+  if (openRate >= 50) wins.push(`High email engagement — ${openRate}% of contacts are opening HUB CertSecure communications.`);
+  if (totalSent > 0 && issueSet.size === 0) wins.push('Zero delivery issues — all compliance notifications are reaching contacts successfully.');
+  if (nc === 0) wins.push('Perfect compliance — every active entity meets all program requirements.');
+  if (nc > 0 && compRate < 80) issues.push(`${nc} ${entityLabel.toLowerCase()} (${pct(nc,active.length)}) are currently out of compliance.`);
+  if (exp30 > 0) issues.push(`${exp30} coverage${exp30>1?' items are':' item is'} expiring within 30 days — renewal action required.`);
+  if (issueSet.size > 0) issues.push(`${issueSet.size} email address${issueSet.size>1?'es have':' has'} delivery issues — contact information may need updating.`);
+  if (newp > 0) issues.push(`${newp} ${entityLabel.toLowerCase()} ${newp>1?'are':'is'} newly onboarded and pending their first compliance review.`);
 
-  const snapshotLabel = snapshotMonth || `${year} (latest)`;
-  const fd = fmtDate(new Date().toISOString().split('T')[0]);
+  const snapshotLabel = month || `${year} (latest)`;
+  const fd = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   const logoSrc = (document.querySelector('.header-logo')?.src?.startsWith('data:')) ? document.querySelector('.header-logo').src : null;
-  const logoTag = logoSrc ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">` :
-    `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span></div>`;
+  const logoTag = logoSrc ? `<img src="${logoSrc}" style="height:40px;object-fit:contain">` :
+    `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span></div>`;
+
+  const rateColor  = compRate >= 80 ? '#16A34A' : compRate >= 60 ? '#D97706' : '#DC2626';
+  const rateBg     = compRate >= 80 ? '#E6F5EF' : compRate >= 60 ? '#FFF8E6' : '#FDF0EE';
+  const rateLabel  = compRate >= 80 ? 'Strong' : compRate >= 60 ? 'Improving' : 'Needs Attention';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>${esc(client)} — Producer Overview</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:820px;padding:28px 32px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #E8ECF5}
-.badge-pill{display:inline-block;background:#E6F5EF;color:#15803D;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
-.client-title{font-size:20px;font-weight:700;color:#1E2E3D;line-height:1.15}
-.producer-name{font-size:13px;color:#3872B8;font-weight:600;margin-top:4px}
-.sec-hdr{display:flex;align-items:center;gap:8px;margin:16px 0 10px}
-.sec-line{flex:1;height:2px;background:#E8ECF5}
-.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;border-left:3px solid #16A34A;padding-left:7px}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
-.kpi{border-radius:8px;padding:12px 12px 10px}
-.kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
-.kpi-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
-.kpi.grey .kpi-label{color:#5A6B7B}.kpi.green .kpi-label{color:#15803D}.kpi.red .kpi-label{color:#B91C1C}.kpi.amber .kpi-label{color:#B45309}
-.kpi-val{font-size:24px;font-weight:700;line-height:1}
-.kpi.grey .kpi-val{color:#1E2E3D}.kpi.green .kpi-val{color:#16A34A}.kpi.red .kpi-val{color:#DC2626}.kpi.amber .kpi-val{color:#D97706}
-.kpi-pct{font-size:10px;font-weight:600;margin-top:2px}
-.kpi.green .kpi-pct{color:#16A34A}.kpi.red .kpi-pct{color:#DC2626}.kpi.amber .kpi-pct{color:#D97706}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.bcard{border:1px solid #E8ECF5;border-radius:8px;padding:13px 14px}
-.bcard-title{font-size:11px;font-weight:700;color:#1E2E3D;margin-bottom:10px}
-table{width:100%;border-collapse:collapse;font-size:10px}
-th{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5A6B7B;padding:5px 7px;text-align:left;border-bottom:1px solid #E8ECF5}
-td{padding:6px 7px;border-bottom:1px solid #F5F7FA}
-.status-nc{background:#FEF2F2;color:#991B1B;padding:2px 7px;border-radius:12px;font-size:9px;font-weight:600}
-.footer{margin-top:18px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:840px;padding:32px 36px 28px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cover{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid #E8ECF5}
+.pill{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:#E6F5EF;color:#15803D;margin-bottom:8px}
+.client-name{font-size:24px;font-weight:800;color:#1E2E3D;line-height:1.1}
+.producer-line{font-size:13px;color:#3872B8;font-weight:600;margin-top:5px}
+.date-line{font-size:11px;color:#8A94A8;margin-top:3px}
+.rate-hero{text-align:center;background:${rateBg};border-radius:16px;padding:20px 28px;min-width:180px}
+.rate-number{font-size:68px;font-weight:900;color:${rateColor};line-height:1}
+.rate-label-pct{font-size:16px;font-weight:700;color:${rateColor}}
+.rate-status{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:white;background:${rateColor};padding:3px 10px;border-radius:20px;margin-top:6px}
+.rate-sub{font-size:10px;color:#8A94A8;margin-top:5px}
+.sec{display:flex;align-items:center;gap:8px;margin:20px 0 12px}
+.sec-line{flex:1;height:1.5px;background:#E8ECF5}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;padding-left:8px;border-left:3px solid #3872B8}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{border:1px solid #E8ECF5;border-radius:10px;padding:14px 16px;text-align:center}
+.stat-val{font-size:32px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A94A8}
+.stat-sub{font-size:10px;color:#8A94A8;margin-top:3px}
+.eng-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.eng-card{border:1px solid #E8ECF5;border-radius:10px;padding:13px 15px}
+.eng-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A94A8;margin-bottom:8px}
+.eng-val{font-size:26px;font-weight:800;line-height:1}
+.eng-sub{font-size:10px;color:#8A94A8;margin-top:3px}
+.win-item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;background:#E6F5EF;border-radius:8px;margin-bottom:7px;font-size:11px;color:#1E2E3D;line-height:1.4}
+.issue-item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;background:#FFF8E6;border-radius:8px;margin-bottom:7px;font-size:11px;color:#1E2E3D;line-height:1.4}
+.nc-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F5F7FA;font-size:10px}
+.nc-row:last-child{border-bottom:none}
+.nc-bar-wrap{width:80px;background:#F1F5F9;border-radius:3px;height:6px;flex-shrink:0}
+.footer{margin-top:22px;padding-top:12px;border-top:1px solid #E8ECF5;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#B0B8C8}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4 portrait;margin:8mm}}
 </style></head><body>
-<div class="hdr">
-  <div>${logoTag}</div>
-  <div style="text-align:right">
-    <div class="badge-pill">Producer Overview</div>
-    <div class="client-title">${esc(client)}</div>
-    <div class="producer-name">Prepared for: ${esc(producerName)}</div>
-    <div style="font-size:11px;color:#5A6B7B;margin-top:3px">Snapshot: ${snapshotLabel} · Generated: ${fd}</div>
+
+<!-- ── HEADER ── -->
+<div class="cover">
+  <div>
+    ${logoTag}
+    <div style="margin-top:14px">
+      <div class="pill">Producer Overview</div>
+      <div class="client-name">${esc(client)}</div>
+      <div class="producer-line">Prepared for ${esc(producerName)}</div>
+      <div class="date-line">Snapshot: ${snapshotLabel} &nbsp;·&nbsp; Generated: ${fd}</div>
+    </div>
+  </div>
+  <div class="rate-hero">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${rateColor};margin-bottom:4px">Compliance Rate</div>
+    <div class="rate-number">${compRate}<span class="rate-label-pct">%</span></div>
+    <div><span class="rate-status">${rateLabel}</span></div>
+    <div class="rate-sub">${comp} of ${active.length} entities compliant</div>
   </div>
 </div>
 
-<div class="sec-hdr"><div class="sec-lbl">Program Summary</div><div class="sec-line"></div></div>
-<div class="kpi-row">
-  <div class="kpi grey"><div class="kpi-label">Active Entities</div><div class="kpi-val">${active.length}</div></div>
-  <div class="kpi green"><div class="kpi-label">Compliant</div><div class="kpi-val">${comp}</div><div class="kpi-pct">${pct(comp,active.length)}</div></div>
-  <div class="kpi red"><div class="kpi-label">Non-Compliant</div><div class="kpi-val">${nc}</div><div class="kpi-pct">${pct(nc,active.length)}</div></div>
-  <div class="kpi amber"><div class="kpi-label">Pending</div><div class="kpi-val">${newp}</div><div class="kpi-pct">${pct(newp,active.length)}</div></div>
-</div>
-
-<div class="two-col" style="margin-top:14px">
-  <div class="bcard">
-    <div class="bcard-title">Expiring Coverage</div>
-    ${[['30 Days',exp30,'#DC2626'],['60 Days',exp60,'#D97706'],['90 Days',exp90,'#1E2E3D']].map(([l,n,c])=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F5F7FA;font-size:11px">
-      <span style="color:#5A6B7B">${l}</span>
-      <span style="font-weight:700;color:${c}">${n}</span>
-    </div>`).join('')}
+<!-- ── SECTION 1: CLIENT PROFILE ── -->
+<div class="sec"><div class="sec-lbl">Who They Are</div><div class="sec-line"></div></div>
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-val" style="color:#3872B8">${active.length}</div>
+    <div class="stat-lbl">Active ${entityLabel}</div>
+    <div class="stat-sub">Enrolled in HUB CertSecure</div>
   </div>
-  ${topNC.length ? `<div class="bcard">
-    <div class="bcard-title">Top NC Reasons</div>
-    ${topNC.map(([reason,n])=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid #F5F7FA;font-size:10px;gap:8px">
-      <span style="color:#5A6B7B;flex:1;line-height:1.3">${esc(reason.length>50?reason.slice(0,50)+'…':reason)}</span>
-      <span style="font-weight:700;color:#DC2626;white-space:nowrap">${n}</span>
-    </div>`).join('')}
-  </div>` : '<div></div>'}
+  <div class="stat">
+    <div class="stat-val" style="color:#16A34A">${comp}</div>
+    <div class="stat-lbl">Compliant</div>
+    <div class="stat-sub">${pct(comp,active.length)} of active entities</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" style="color:${nc>0?'#DC2626':'#16A34A'}">${nc}</div>
+    <div class="stat-lbl">Pending Action</div>
+    <div class="stat-sub">${nc === 0 ? 'Zero open items 🎉' : pct(nc,active.length) + ' require attention'}</div>
+  </div>
 </div>
 
-${ncEntities.length ? `
-<div class="sec-hdr" style="margin-top:16px"><div class="sec-lbl">Non-Compliant Entities</div><div class="sec-line"></div></div>
-<table>
-  <thead><tr><th>Entity Name</th><th>Status</th><th>Next Expiration</th><th>Contact</th></tr></thead>
-  <tbody>${ncEntities.map((r,i)=>`<tr style="background:${i%2===0?'#FAFBFC':'white'}">
-    <td style="font-weight:600">${esc(r[C.entity_name]||'')}</td>
-    <td><span class="status-nc">Non-Compliant</span></td>
-    <td>${fmtDate(r[C.next_exp])}</td>
-    <td style="color:#5A6B7B;font-size:9px">${esc(r[C.email]||'')}</td>
-  </tr>`).join('')}</tbody>
-</table>` : ''}
+<!-- ── SECTION 2: PLATFORM ACTIVITY ── -->
+${platformActive ? `
+<div class="sec"><div class="sec-lbl">How Active the Platform Is</div><div class="sec-line"></div></div>
+<div class="eng-row">
+  <div class="eng-card">
+    <div class="eng-title">Compliance Contacts Reached</div>
+    <div class="eng-val" style="color:#3872B8">${totalSent.toLocaleString()}</div>
+    <div class="eng-sub">Unique email addresses contacted</div>
+  </div>
+  <div class="eng-card">
+    <div class="eng-title">Email Open Rate</div>
+    <div class="eng-val" style="color:${openRate>=50?'#16A34A':openRate>=25?'#D97706':'#DC2626'}">${openRate}%</div>
+    <div class="eng-sub">${openSet.size.toLocaleString()} contacts opened a notification</div>
+  </div>
+  <div class="eng-card">
+    <div class="eng-title">Delivery Success</div>
+    <div class="eng-val" style="color:${issueSet.size===0?'#16A34A':'#DC2626'}">${totalSent>0?Math.round((1-issueSet.size/totalSent)*100):100}%</div>
+    <div class="eng-sub">${issueSet.size === 0 ? 'No delivery issues detected' : issueSet.size + ' address' + (issueSet.size>1?'es need':'s needs') + ' updating'}</div>
+  </div>
+</div>` : `
+<div class="sec"><div class="sec-lbl">Platform Activity</div><div class="sec-line"></div></div>
+<div style="padding:14px;background:#EEF1F8;border-radius:8px;font-size:12px;color:#5A6B7B;text-align:center">
+  No engagement data available for this snapshot period.
+</div>`}
 
+<!-- ── SECTION 3: STANDOUT WINS & ISSUES ── -->
+${(wins.length || issues.length || topNC.length) ? `
+<div class="sec"><div class="sec-lbl">Standout Issues &amp; Wins</div><div class="sec-line"></div></div>
+<div style="display:grid;grid-template-columns:${wins.length && (issues.length || topNC.length) ? '1fr 1fr' : '1fr'};gap:14px">
+  ${wins.length ? `<div>
+    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#15803D;margin-bottom:8px">✓ Wins</div>
+    ${wins.map(w=>`<div class="win-item"><span style="color:#16A34A;font-size:14px;flex-shrink:0">✓</span>${esc(w)}</div>`).join('')}
+  </div>` : ''}
+  ${(issues.length || topNC.length) ? `<div>
+    ${issues.length ? `<div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#B45309;margin-bottom:8px">⚠ Attention Needed</div>
+    ${issues.map(i=>`<div class="issue-item"><span style="color:#D97706;font-size:14px;flex-shrink:0">⚠</span>${esc(i)}</div>`).join('')}` : ''}
+    ${topNC.length ? `<div style="margin-top:${issues.length?'10':'0'}px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#B91C1C;margin-bottom:8px">Top NC Reasons</div>
+      <div style="border:1px solid #F5CFC9;border-radius:8px;padding:10px 12px;background:#FDF0EE">
+        ${topNC.map(([r,n])=>`<div class="nc-row">
+          <div style="flex:1;color:#5A6B7B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.length>52?r.slice(0,52)+'…':r)}</div>
+          <div class="nc-bar-wrap"><div style="height:100%;background:#C0392B;border-radius:3px;width:${barPct(n,topNC[0][1])}%"></div></div>
+          <div style="font-weight:700;color:#C0392B;width:22px;text-align:right;font-size:11px">${n}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>` : ''}
+</div>` : ''}
+
+<!-- ── FOOTER ── -->
 <div class="footer">
-  <div>🔒 <strong>Confidential — HUB CertSecure.</strong> Prepared for ${esc(producerName)} · ${esc(client)} · Snapshot: ${snapshotLabel}. Internal use only.</div>
-  <div style="text-align:right;white-space:nowrap">HUB CertSecure · Producer Overview</div>
+  <div>🔒 Confidential — prepared for ${esc(producerName)} by HUB CertSecure. Not for distribution.</div>
+  <div style="text-align:right">${esc(client)} &nbsp;·&nbsp; HUB CertSecure &nbsp;·&nbsp; ${fd}</div>
 </div>
 </body></html>`;
 }
