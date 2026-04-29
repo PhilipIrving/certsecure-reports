@@ -452,6 +452,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.02</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -923,7 +924,7 @@
 </main>
 
 <div class="toast" id="toast"></div>
-<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.01</div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.02</div>
 </div><!-- end main-app -->
 
 
@@ -1209,6 +1210,7 @@ function toggleCsvPaths() {
 function onLoginSuccess(user) {
   const vb = document.getElementById('version-badge');
   if (vb) vb.style.display = '';
+  renderGrids();
 }
 
 // ── Enter key + session restore ──
@@ -2844,41 +2846,7 @@ function toast(msg, type='') {
   setTimeout(() => t.className='toast', 3500);
 }
 
-// ──────────────────────────────────────────────
-// INIT
-// ──────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  initDark();
-  renderGrids();
-  // Ensure only step-1 is visible on load
-  [2,3].forEach(i => { const el=document.getElementById(`step-${i}`); if(el) el.style.display='none'; });
-  const s1 = document.getElementById('step-1'); if(s1) s1.style.display='';
-  // Check if there's already a valid session (e.g. after browser refresh)
-  if (!checkRecoveryToken()) {
-    try {
-      const { data: { session } } = await getSupabase().auth.getSession();
-      if (session?.user) {
-        const meta = session.user.user_metadata || {};
-        const displayName = meta.display_name || session.user.email?.split('@')[0] || '';
-        const role = meta.role || 'viewer';
-        window._userRole = role;
-        window._userEmail = session.user.email;
-        const wm = document.getElementById('welcome-msg');
-        if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
-        const adminTab = document.getElementById('stab-admin');
-        if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
-        onLoginSuccess(session.user);
-        document.getElementById('auth-overlay').style.display = 'none';
-        document.getElementById('main-app').style.display = '';
-      }
-    } catch(e) { /* no session, show login */ }
-  }
-});
 
-function onLoginSuccess(user) {
-  // Show footer, set user
-
-}
 </script>
 </body>
 </html>
