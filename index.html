@@ -17,6 +17,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      --transition: 0.22s ease;
       --navy: #1E2E3D;
       --blue: #3872B8;
       --blue-hover: #2D5F99;
@@ -36,7 +37,36 @@
       --shadow: 0 2px 8px rgba(0,0,0,0.08);
       --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
     }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; transition: background var(--transition), color var(--transition); }
+
+    /* ── Dark mode ── */
+    html.dark {
+      --navy:     #C9D8EC;
+      --blue:     #6BA3DE;
+      --blue-hover:#85B5E5;
+      --blue-light:#1A2A3D;
+      --bg:       #0F1620;
+      --white:    #1A2332;
+      --border:   #2A3A4D;
+      --text:     #D1DCE8;
+      --muted:    #7A8FA0;
+      --green:    #34D399;
+      --green-bg: #0D2318;
+      --red:      #F87171;
+      --red-bg:   #2D1515;
+      --shadow:   0 2px 8px rgba(0,0,0,0.35);
+      --shadow-lg:0 8px 24px rgba(0,0,0,0.5);
+    }
+    html.dark .header      { background: #0A1018; border-bottom: 1px solid #1E2D3D; }
+    html.dark .client-card { background: var(--white); }
+    html.dark .login-card  { background: #1A2332; }
+    html.dark .login-input { background: #0F1620; border-color: var(--border); color: var(--text); }
+    html.dark select, html.dark input[type="text"], html.dark input[type="date"] { background: #0F1620; color: var(--text); border-color: var(--border); }
+    html.dark .modal       { background: #1A2332; }
+    html.dark .report-card { background: var(--white); }
+    html.dark .rc-sidebar-item { background: var(--bg); }
+    html.dark .rc-sidebar-item.active { background: var(--blue-light); }
+    html.dark .notif-drawer { background: #1A2332; border-color: var(--border); }
 
     /* ── Login overlay ── */
     #auth-overlay {
@@ -75,7 +105,10 @@
     .login-footer { font-size:10px;color:#94A3B8;text-align:center;margin-top:20px;line-height:1.4; }
     .login-link { font-size:12px;color:#3872B8;text-decoration:none;font-weight:600; }
     .login-link:hover { text-decoration:underline; }
-    .login-success { background:#E6F5EF;border:1px solid #C3E6D3;border-radius:8px;padding:10px 14px;font-size:12px;color:#1A7F5A;margin-bottom:16px; }
+    .client-last-report { font-size:9px;color:var(--muted);margin-top:4px;min-height:13px; }
+    .role-badge { display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:10px; }
+    .role-admin  { background:#EBF2FB;color:#3872B8; }
+    .role-viewer { background:#EEF1F8;color:#5A6B7B; }
     .stab { background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;font-family:inherit; }
     .stab.active { color:var(--blue);border-bottom-color:var(--blue); }
     .stab:hover:not(.active) { color:var(--navy); }
@@ -126,12 +159,15 @@
     .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Main ── */
-    .main { max-width: 1060px; margin: 0 auto; padding: 32px 24px 60px; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; height: calc(100vh - 64px - 36px); display: flex; flex-direction: column; overflow: hidden; }
+    .step-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; opacity: 1; transform: translateX(0); transition: opacity 0.18s ease, transform 0.18s ease; }
+    .step-panel.out-left  { opacity: 0; transform: translateX(-24px); }
+    .step-panel.out-right { opacity: 0; transform: translateX(24px); }
 
     /* ── Page header ── */
     .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
     .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .page-hdr { margin-bottom: 24px; }
+    .page-hdr { margin-bottom: 14px; flex-shrink: 0; }
 
     /* ── Card ── */
     .card {
@@ -215,7 +251,45 @@
     .banner-change:hover { text-decoration: underline; }
 
     /* ── Report cards ── */
-    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    /* Sidebar report layout */
+    .report-layout { display: grid; grid-template-columns: 200px 1fr; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: 1; min-height: 0; }
+    .rc-sidebar { background: var(--bg); border-right: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .rc-sidebar-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.14s; }
+    .rc-sidebar-item:hover { background: var(--border); }
+    .rc-sidebar-item.active { background: var(--blue-light); }
+    .rc-sidebar-item.selected { border: 2px solid var(--blue); }
+    .rc-sidebar-item.active.selected { background: var(--blue-light); }
+    .rcs-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .rcs-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .rcs-row   { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+    .rc-panel  { flex: 1; overflow-y: auto; padding: 16px 18px; }
+    .rc-panel-hdr { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .rc-panel-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    /* Search */
+    .search-wrap { position: relative; margin-bottom: 14px; flex-shrink: 0; }
+    .search-input { width: 100%; box-sizing: border-box; padding: 9px 14px 9px 36px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s; }
+    .search-input:focus { border-color: var(--blue); }
+    .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+    .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1.5px solid var(--blue); border-top: none; border-radius: 0 0 8px 8px; box-shadow: var(--shadow-lg); z-index: 100; max-height: 220px; overflow-y: auto; }
+    .search-item { padding: 9px 14px; cursor: pointer; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .search-item:last-child { border-bottom: none; }
+    .search-item:hover { background: var(--blue-light); }
+    /* Progress steps */
+    .prog-steps { display: flex; align-items: center; gap: 0; padding: 20px 0 10px; }
+    .prog-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+    .prog-step:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+    .prog-step.done::after  { background: var(--green); }
+    .prog-step.active::after{ background: linear-gradient(to right, var(--blue), var(--border)); }
+    .prog-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; z-index: 1; transition: all 0.3s; }
+    .prog-step.pending .prog-dot { background: var(--bg); border: 2px solid var(--border); color: var(--muted); }
+    .prog-step.active  .prog-dot { background: var(--blue); border: 2px solid var(--blue); color: white; }
+    .prog-step.done    .prog-dot { background: var(--green); border: 2px solid var(--green); color: white; }
+    .prog-step-lbl { font-size: 10px; color: var(--muted); margin-top: 5px; text-align: center; }
+    .prog-step.active .prog-step-lbl { color: var(--blue); font-weight: 600; }
+    .prog-step.done   .prog-step-lbl { color: var(--green); font-weight: 600; }
+    /* Footer */
+    .app-footer { height: 36px; background: var(--white); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .app-footer a { color: var(--muted); text-decoration: none; }
     @media (max-width: 680px) { .report-grid { grid-template-columns: 1fr; } }
     .report-card { border: 2px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
     .report-card.on { border-color: var(--blue); }
@@ -249,7 +323,7 @@
     .rc-type { margin-left: auto; padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
     .type-excel { background: #D1FAE5; color: #065F46; }
     .type-pdf   { background: #FEE2E2; color: #991B1B; }
-    .report-card-body { padding: 15px; display: none; }
+    .report-card-body { padding: 15px; display: none; max-height: 320px; overflow-y: auto; }
     .report-card.on .report-card-body { display: block; }
 
     /* ── Checkboxes ── */
@@ -440,10 +514,27 @@
        onerror="this.style.display='none'; document.getElementById('logo-text').style.display='flex'">
   <div id="logo-text" class="header-logo-fallback">CERT<span>SECURE</span></div>
   <div class="header-right">
+    <div class="notif-wrap" style="position:relative">
+      <button class="btn-ghost" id="notif-btn" onclick="toggleNotifDrawer()" style="position:relative">
+        🔔 <span id="notif-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--red);color:white;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;line-height:14px;text-align:center"></span>
+      </button>
+      <div class="notif-drawer" id="notif-drawer" style="display:none;position:absolute;right:0;top:44px;width:300px;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);z-index:200;overflow:hidden">
+        <div style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          Recent Activity
+          <button onclick="clearNotifs()" style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit">Clear</button>
+        </div>
+        <div id="notif-list" style="max-height:280px;overflow-y:auto;padding:6px 0">
+          <div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">No recent activity</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-ghost" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    <span id="welcome-msg" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;display:none"></span>
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
-    <span style="color:rgba(255,255,255,0.35);font-size:11px;font-weight:500;padding-left:6px">v0.05</span>
-    <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>  </div>
+    
+    <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
+  </div>
 </header>
 
 <!-- ═══════════════════ SETTINGS MODAL ═══════════════════ -->
@@ -544,6 +635,10 @@
         <div id="add-user-form" style="display:none;margin-top:16px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">Add New User</div>
           <div class="form-grp">
+            <label class="form-lbl">Display Name</label>
+            <input type="text" id="new-user-name" class="login-input" style="font-size:13px;padding:8px 12px" placeholder="e.g. Philip Irving">
+          </div>
+          <div class="form-grp">
             <label class="form-lbl">Email</label>
             <input type="email" id="new-user-email" class="login-input" style="font-size:13px;padding:8px 12px" placeholder="email@hubinternational.com">
           </div>
@@ -551,10 +646,39 @@
             <label class="form-lbl">Temporary Password</label>
             <input type="text" id="new-user-pass" class="login-input" style="font-size:13px;padding:8px 12px" placeholder="They can reset it after first login">
           </div>
+          <div class="form-grp">
+            <label class="form-lbl">Role</label>
+            <select id="new-user-role" style="width:100%;padding:8px 12px;border:1.5px solid #D8DEE9;border-radius:8px;font-size:13px;font-family:inherit">
+              <option value="viewer">Viewer — can generate reports</option>
+              <option value="admin">Admin — can generate reports + manage users/settings</option>
+            </select>
+          </div>
           <div id="add-user-msg" style="display:none;font-size:12px;margin-bottom:10px"></div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="doAddUser()">Create User</button>
             <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="hideAddUser()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Edit user modal -->
+        <div id="edit-user-modal" style="display:none;margin-top:16px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">Edit User</div>
+          <input type="hidden" id="edit-user-id">
+          <div class="form-grp">
+            <label class="form-lbl">Display Name</label>
+            <input type="text" id="edit-user-name" class="login-input" style="font-size:13px;padding:8px 12px">
+          </div>
+          <div class="form-grp">
+            <label class="form-lbl">Role</label>
+            <select id="edit-user-role" style="width:100%;padding:8px 12px;border:1.5px solid #D8DEE9;border-radius:8px;font-size:13px;font-family:inherit">
+              <option value="viewer">Viewer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div id="edit-user-msg" style="display:none;font-size:12px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="doEditUser()">Save Changes</button>
+            <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="hideEditUser()">Cancel</button>
           </div>
         </div>
       </div>
@@ -585,12 +709,17 @@
 <main class="main">
 
   <!-- ── STEP 1: CLIENT SELECTION ── -->
-  <div id="step-1">
+  <div id="step-1" class="step-panel">
     <div class="page-hdr">
       <div class="page-title">Report Generator</div>
       <div class="page-sub">Select a client to get started</div>
     </div>
-    <div class="card">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="client-search" placeholder="Search clients…" oninput="handleSearch(this.value)" onkeydown="handleSearchKey(event)" autocomplete="off">
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <div class="card" style="flex:1;min-height:0">
       <div class="struct-label">General — Shown by Entity Type</div>
       <div class="client-grid" id="grid-general"></div>
       <div class="struct-label">Subcontractors — Shown by Project</div>
@@ -601,7 +730,7 @@
   </div>
 
   <!-- ── STEP 2: CONFIGURE ── -->
-  <div id="step-2" style="display:none">
+  <div id="step-2" class="step-panel" style="display:none">
     <div class="page-hdr">
       <div class="page-title">Configure Report</div>
       <div class="page-sub">Choose which reports to generate and customize each one</div>
@@ -612,21 +741,17 @@
         <div class="banner-name" id="banner-name"></div>
         <div class="banner-struct" id="banner-struct"></div>
       </div>
-      <span class="banner-change" onclick="goTo(1)">← Change Client</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn-ghost" onclick="openSettings()" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.12);border-radius:6px">⚙ Settings</button>
+        <span class="banner-change" onclick="goTo(1)">← Change Client</span>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Select Reports to Generate</div>
-      <div class="report-grid">
+    <div class="report-layout">
+      <div class="rc-sidebar">
 
         <!-- Compliance Summary PDF -->
-        <div class="report-card" id="rc-cs">
-          <div class="report-card-hdr" onclick="toggleReport('cs')">
-            <div class="rc-dot"></div>
-            <div><div class="rc-title">Compliance Summary</div><div class="rc-sub">Executive compliance overview</div></div>
-            <span class="rc-type type-pdf">PDF</span>
-          </div>
-          <div class="report-card-body">
+        <div id="rc-body-cs" style="display:none">
             <div class="sec-div">Sections to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="cs-kpi" checked> Program KPI Cards (Active, Compliant, Non-Compliant, New)</label>
@@ -642,13 +767,7 @@
         </div>
 
         <!-- Compliance Detail Excel -->
-        <div class="report-card" id="rc-cd">
-          <div class="report-card-hdr" onclick="toggleReport('cd')">
-            <div class="rc-dot"></div>
-            <div><div class="rc-title">Compliance Detail</div><div class="rc-sub">Full entity-level compliance data</div></div>
-            <span class="rc-type type-excel">Excel</span>
-          </div>
-          <div class="report-card-body">
+        <div id="rc-body-cd" style="display:none">
             <div class="sec-div">Sheets to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="cd-summary" checked> Summary</label>
@@ -670,13 +789,7 @@
         </div>
 
         <!-- Engagement Summary PDF -->
-        <div class="report-card" id="rc-es">
-          <div class="report-card-hdr" onclick="toggleReport('es')">
-            <div class="rc-dot"></div>
-            <div><div class="rc-title">Engagement Summary</div><div class="rc-sub">Email engagement overview</div></div>
-            <span class="rc-type type-pdf">PDF</span>
-          </div>
-          <div class="report-card-body">
+        <div id="rc-body-es" style="display:none">
             <div class="sec-div">Sections to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="es-kpi" checked> Email KPI Cards (Sent, Opened, Clicked, Issues)</label>
@@ -691,13 +804,7 @@
         </div>
 
         <!-- Engagement Detail Excel -->
-        <div class="report-card" id="rc-ed">
-          <div class="report-card-hdr" onclick="toggleReport('ed')">
-            <div class="rc-dot"></div>
-            <div><div class="rc-title">Engagement Detail</div><div class="rc-sub">Entity-level engagement &amp; email data</div></div>
-            <span class="rc-type type-excel">Excel</span>
-          </div>
-          <div class="report-card-body">
+        <div id="rc-body-ed" style="display:none">
             <div class="sec-div">Sheets to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="ed-summary" checked> Summary</label>
@@ -717,7 +824,10 @@
           </div>
         </div>
 
-      </div><!-- /report-grid -->
+      </div><!-- /rc-sidebar -->
+      <div class="rc-panel" id="rc-panel-content">
+        <div style="color:var(--muted);font-size:13px;padding:20px 0">Select a report type from the left to configure it.</div>
+      </div>
 
       <!-- Global filters -->
       <div style="margin-top:20px">
@@ -750,17 +860,30 @@
   </div>
 
   <!-- ── STEP 3: GENERATING / DONE ── -->
-  <div id="step-3" style="display:none">
+  <div id="step-3" class="step-panel" style="display:none">
     <div class="page-hdr">
       <div class="page-title" id="s3-title">Generating Reports…</div>
       <div class="page-sub" id="s3-sub">Please wait while your reports are built</div>
     </div>
     <div class="card">
 
-      <div id="gen-area" class="progress-area">
-        <div class="spinner"></div>
-        <div class="progress-lbl" id="prog-lbl">Fetching data…</div>
-        <div class="progress-sub" id="prog-sub">Loading CSV files from GitHub</div>
+      <div id="gen-area">
+        <div class="prog-steps" id="prog-steps">
+          <div class="prog-step pending" id="ps-0">
+            <div class="prog-dot">1</div>
+            <div class="prog-step-lbl">Fetching Data</div>
+          </div>
+          <div class="prog-step pending" id="ps-1">
+            <div class="prog-dot">2</div>
+            <div class="prog-step-lbl">Building Reports</div>
+          </div>
+          <div class="prog-step pending" id="ps-2">
+            <div class="prog-dot">3</div>
+            <div class="prog-step-lbl">Finalizing</div>
+          </div>
+        </div>
+        <div style="text-align:center;padding:10px 0 4px;font-size:13px;font-weight:600;color:var(--navy)" id="prog-lbl">Fetching data…</div>
+        <div style="text-align:center;font-size:12px;color:var(--muted)" id="prog-sub">Loading CSV files from GitHub</div>
       </div>
 
       <div id="done-area" style="display:none">
@@ -795,6 +918,15 @@
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
+<footer class="app-footer" id="app-footer" style="display:none">
+  <span>🔒 HUB CertSecure — Confidential. Internal use only.</span>
+  <span style="color:var(--border)">|</span>
+  <span>Report Generator</span>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:16px">
+    <span id="footer-user" style="color:var(--muted)"></span>
+    <span style="font-weight:600;color:var(--blue)">v0.75</span>
+  </span>
+</footer>
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
 <script>
@@ -891,6 +1023,20 @@ async function doLogin() {
         ? 'Incorrect email or password. Please try again.' : error.message);
       btn.disabled = false; btn.textContent = 'Sign In'; return;
     }
+    // Show welcome message
+    const meta = data.user?.user_metadata || {};
+    const displayName = meta.display_name || data.user?.email?.split('@')[0] || '';
+    const role = meta.role || 'viewer';
+    if (displayName) {
+      const wm = document.getElementById('welcome-msg');
+      if (wm) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+    }
+    // Store role for viewer restrictions
+    window._userRole = role;
+    window._userEmail = data.user?.email;
+    const adminTab = document.getElementById('stab-admin');
+    if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+    onLoginSuccess(data.user);
     document.getElementById('auth-overlay').style.display = 'none';
     document.getElementById('main-app').style.display = '';
   } catch(e) {
@@ -902,7 +1048,12 @@ async function doLogin() {
 // ── Sign Out ──
 async function doSignOut() {
   await getSupabase().auth.signOut();
-  _supabaseAdmin = null;
+  window._userRole = null; window._userEmail = null;
+  const wm = document.getElementById('welcome-msg');
+  if (wm) { wm.textContent = ''; wm.style.display = 'none'; }
+  // Restore settings button visibility
+  const settingsBtn = document.querySelector('button[onclick="openSettings()"]');
+  if (settingsBtn) settingsBtn.style.display = '';
   document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-btn').disabled   = false;
@@ -995,21 +1146,32 @@ async function loadUsers() {
         '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet. Click + Add User to get started.</div>';
       return;
     }
-    document.getElementById('users-list').innerHTML = users.map(u => `
+    document.getElementById('users-list').innerHTML = users.map(u => {
+      const meta = u.raw_user_meta_data || u.user_metadata || {};
+      const name = meta.display_name || '';
+      const role = meta.role || 'viewer';
+      return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:8px;background:var(--white)">
         <div>
-          <div style="font-size:13px;font-weight:600;color:var(--navy)">${u.email}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:13px;font-weight:600;color:var(--navy)">${name || u.email}</div>
+            <span class="role-badge role-${role}">${role}</span>
+          </div>
+          ${name ? `<div style="font-size:11px;color:var(--muted)">${u.email}</div>` : ''}
           <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at
             ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
             : 'Never'}</div>
         </div>
         <div style="display:flex;gap:6px">
+          <button onclick="showEditUser('${u.id}','${(name||'').replace(/'/g,"\\'")}','${role}')"
+            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Edit</button>
           <button onclick="doResetUserPassword('${u.id}','${u.email}')"
             style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Reset PW</button>
           <button onclick="doDeleteUser('${u.id}','${u.email}')"
             style="font-size:11px;padding:4px 10px;border:1px solid #F5CFC9;border-radius:5px;background:#FDF0EE;cursor:pointer;color:#C0392B">Remove</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch(e) {
     document.getElementById('users-list').innerHTML =
       `<div style="color:var(--muted);font-size:12px;padding:10px;background:#EEF1F8;border-radius:7px">
@@ -1022,19 +1184,44 @@ async function loadUsers() {
 }
 
 async function doAddUser() {
+  const name  = document.getElementById('new-user-name').value.trim();
   const email = document.getElementById('new-user-email').value.trim();
   const pass  = document.getElementById('new-user-pass').value.trim();
+  const role  = document.getElementById('new-user-role').value;
   const msgEl = document.getElementById('add-user-msg');
 
-  if (!email || !pass) { showUserMsg(msgEl, 'Both fields are required.', true); return; }
+  if (!email || !pass) { showUserMsg(msgEl, 'Email and password are required.', true); return; }
   if (pass.length < 8) { showUserMsg(msgEl, 'Password must be at least 8 characters.', true); return; }
 
   try {
-    await callEdge('create', { email, password: pass });
-    showUserMsg(msgEl, `${email} added successfully.`, false);
+    await callEdge('create', { email, password: pass, metadata: { display_name: name, role } });
+    showUserMsg(msgEl, `${name || email} added successfully.`, false);
+    document.getElementById('new-user-name').value  = '';
     document.getElementById('new-user-email').value = '';
     document.getElementById('new-user-pass').value  = '';
     setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
+  } catch(e) { showUserMsg(msgEl, e.message, true); }
+}
+
+function showEditUser(uid, name, role) {
+  document.getElementById('edit-user-id').value   = uid;
+  document.getElementById('edit-user-name').value = name;
+  document.getElementById('edit-user-role').value = role;
+  document.getElementById('edit-user-msg').style.display = 'none';
+  document.getElementById('edit-user-modal').style.display = '';
+  document.getElementById('add-user-form').style.display  = 'none';
+}
+function hideEditUser() { document.getElementById('edit-user-modal').style.display = 'none'; }
+
+async function doEditUser() {
+  const uid  = document.getElementById('edit-user-id').value;
+  const name = document.getElementById('edit-user-name').value.trim();
+  const role = document.getElementById('edit-user-role').value;
+  const msgEl= document.getElementById('edit-user-msg');
+  try {
+    await callEdge('updateMeta', { userId: uid, metadata: { display_name: name, role } });
+    showUserMsg(msgEl, 'Saved!', false);
+    setTimeout(() => { hideEditUser(); loadUsers(); }, 900);
   } catch(e) { showUserMsg(msgEl, e.message, true); }
 }
 
@@ -1338,12 +1525,10 @@ function renderGrids() {
   ['general','project','location'].forEach(struct => {
     document.getElementById(`grid-${struct}`).innerHTML =
       CLIENTS.filter(c => c.structure === struct).map(c =>
-        `<div class="client-card" id="cc-${c.key.replace(/[^a-z0-9]/gi,'_')}" onclick="pickClient('${c.key.replace(/'/g,"\\'").replace(/&/g,"\\x26")}')">
-          <div class="client-name">${c.name}</div>
-          <span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span>
-        </div>`
+        `<div class="client-card" id="cc-${c.key.replace(/[^a-z0-9]/gi,'_')}" onclick="pickClient('${c.key.replace(/'/g,"\'").replace(/&/g,"\x26")}')"><div class="client-name">${c.name}</div><span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span><div class="client-last-report" id="lr-${c.key.replace(/[^a-z0-9]/gi,'_')}"></div></div>`
       ).join('');
   });
+  updateLastReportBadges();
 }
 
 function pickClient(key) {
@@ -1352,15 +1537,22 @@ function pickClient(key) {
   const safeKey = key.replace(/[^a-z0-9]/gi,'_');
   document.getElementById(`cc-${safeKey}`)?.classList.add('selected');
   updateCustomFieldsUI();
-  setTimeout(() => {
-    goTo(2);
-    // Deselect all report cards — user picks fresh each time
-    ['cs','cd','es','ed'].forEach(id => {
-      const card = document.getElementById(`rc-${id}`);
-      if (card) card.classList.remove('on');
-    });
-    updateGenBtn();
-  }, 180);
+  _selectedReports.clear();
+  _activePanel = null;
+  setTimeout(() => goTo(2, 'forward'), 80);
+}
+
+function updateLastReportBadges() {
+  CLIENTS.forEach(c => {
+    const safeKey = c.key.replace(/[^a-z0-9]/gi,'_');
+    const el = document.getElementById(`lr-${safeKey}`);
+    if (!el) return;
+    const ts = localStorage.getItem(`cs-last-report-${safeKey}`);
+    if (ts) {
+      const d = new Date(ts);
+      el.textContent = `Last: ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+    }
+  });
 }
 
 function updateCustomFieldsUI() {
@@ -1386,9 +1578,30 @@ function getCustomFields(prefix) {
   });
 }
 
-function goTo(n) {
-  [1,2,3].forEach(i => document.getElementById(`step-${i}`).style.display = 'none');
-  document.getElementById(`step-${n}`).style.display = '';
+// ──────────────────────────────────────────────
+// NAVIGATION & TRANSITIONS
+// ──────────────────────────────────────────────
+let _currentStep = 1;
+function goTo(n, direction='forward') {
+  const current = document.getElementById(`step-${_currentStep}`);
+  const next    = document.getElementById(`step-${n}`);
+  if (!next) return;
+
+  // Animate out
+  const outClass = direction === 'forward' ? 'out-left' : 'out-right';
+  if (current) {
+    current.classList.add(outClass);
+    setTimeout(() => { current.style.display = 'none'; current.classList.remove(outClass); }, 180);
+  }
+  // Animate in
+  setTimeout(() => {
+    next.style.display = '';
+    const inClass = direction === 'forward' ? 'out-right' : 'out-left';
+    next.classList.add(inClass);
+    requestAnimationFrame(() => { requestAnimationFrame(() => { next.classList.remove(inClass); }); });
+  }, 90);
+
+  _currentStep = n;
   if (n === 2 && selectedClient) {
     const s = STRUCT[selectedClient.structure];
     document.getElementById('banner-name').textContent   = selectedClient.name;
@@ -1396,19 +1609,231 @@ function goTo(n) {
     document.getElementById('cd-entity-lbl').textContent = s.groupLabel ? s.groupLabel + ' List' : 'Entity List';
     if (!document.getElementById('g-date').value)
       document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
+    renderSidebar();
     updateGenBtn();
   }
 }
 
-function toggleReport(id) { document.getElementById(`rc-${id}`).classList.toggle('on'); updateGenBtn(); }
-function updateGenBtn() {
-  const any = ['cs','cd','es','ed'].some(id => document.getElementById(`rc-${id}`)?.classList.contains('on'));
-  document.getElementById('gen-btn').disabled = !any;
+// ──────────────────────────────────────────────
+// SIDEBAR REPORT PANEL
+// ──────────────────────────────────────────────
+const REPORT_DEFS = [
+  { id:'cs', label:'Compliance Summary',  sub:'Executive overview PDF', type:'PDF',   color:'#DC2626' },
+  { id:'cd', label:'Compliance Detail',   sub:'Full entity-level data',  type:'Excel', color:'#16A34A' },
+  { id:'es', label:'Engagement Summary',  sub:'Email engagement PDF',    type:'PDF',   color:'#DC2626' },
+  { id:'ed', label:'Engagement Detail',   sub:'Full engagement data',    type:'Excel', color:'#16A34A' },
+];
+let _activePanel = null;
+let _selectedReports = new Set();
+
+// Store panel HTML from original report-card bodies
+const PANEL_CONTENT = {};
+
+function renderSidebar() {
+  const sidebar = document.querySelector('.rc-sidebar');
+  if (!sidebar) return;
+  sidebar.innerHTML = REPORT_DEFS.map(r => {
+    const on = _selectedReports.has(r.id);
+    return `<div class="rc-sidebar-item ${_activePanel===r.id?'active':''} ${on?'selected':''}"
+      onclick="selectSidebarItem('${r.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="rcs-title">${r.label}</div>
+        <input type="checkbox" ${on?'checked':''} onclick="event.stopPropagation();toggleSidebarReport('${r.id}',this.checked)"
+          style="margin-top:2px;cursor:pointer;accent-color:var(--blue)">
+      </div>
+      <div class="rcs-sub">${r.sub}</div>
+      <div class="rcs-row">
+        <span style="font-size:10px;font-weight:700;color:${r.color};background:${r.color}18;padding:1px 7px;border-radius:10px">${r.type}</span>
+        ${on ? '<span style="font-size:10px;color:var(--blue)">✓ Selected</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+  if (_activePanel) renderPanel(_activePanel);
 }
+
+function selectSidebarItem(id) {
+  _activePanel = id;
+  renderSidebar();
+  renderPanel(id);
+}
+
+function toggleSidebarReport(id, checked) {
+  if (checked) _selectedReports.add(id); else _selectedReports.delete(id);
+  renderSidebar();
+  updateGenBtn();
+}
+
+function renderPanel(id) {
+  const panel = document.getElementById('rc-panel-content');
+  if (!panel) return;
+  const def = REPORT_DEFS.find(r => r.id === id);
+  if (!def) return;
+  // Get the stored panel HTML from hidden report-card bodies
+  const body = document.getElementById(`rc-body-${id}`);
+  if (body) {
+    panel.innerHTML = `
+      <div class="rc-panel-hdr">${def.label}</div>
+      <div class="rc-panel-sub">${def.sub} &mdash; <span style="color:${def.color};font-weight:600">${def.type}</span></div>
+      ${body.innerHTML}`;
+  } else {
+    panel.innerHTML = `<div class="rc-panel-hdr">${def.label}</div><div style="color:var(--muted);font-size:12px;margin-top:8px">Configuration for this report is not available.</div>`;
+  }
+}
+
+function toggleReport(id) {
+  if (_selectedReports.has(id)) _selectedReports.delete(id); else _selectedReports.add(id);
+  renderSidebar();
+  updateGenBtn();
+}
+
+function updateGenBtn() {
+  document.getElementById('gen-btn').disabled = _selectedReports.size === 0;
+}
+
+// ──────────────────────────────────────────────
+// PROGRESS STEPS
+// ──────────────────────────────────────────────
+let _progStep = 0;
 function setProgress(lbl, sub) {
   document.getElementById('prog-lbl').textContent = lbl;
-  document.getElementById('prog-sub').textContent = sub;
+  document.getElementById('prog-sub').textContent = sub || '';
+  // Advance progress step based on label keyword
+  const low = lbl.toLowerCase();
+  let step = 0;
+  if (low.includes('building') || low.includes('generating') || low.includes('compliance') || low.includes('engagement')) step = 1;
+  if (low.includes('finaliz') || low.includes('pdf') || low.includes('summary') || low.includes('ready')) step = 2;
+  _progStep = Math.max(_progStep, step);
+  [0,1,2].forEach(i => {
+    const el = document.getElementById(`ps-${i}`);
+    if (!el) return;
+    if (i < _progStep)      el.className = 'prog-step done';
+    else if (i === _progStep) el.className = 'prog-step active';
+    else                    el.className = 'prog-step pending';
+    el.querySelector('.prog-dot').textContent = i < _progStep ? '✓' : String(i+1);
+  });
 }
+
+function resetProgress() {
+  _progStep = 0;
+  [0,1,2].forEach(i => {
+    const el = document.getElementById(`ps-${i}`);
+    if (el) { el.className = 'prog-step pending'; el.querySelector('.prog-dot').textContent = String(i+1); }
+  });
+}
+
+// ──────────────────────────────────────────────
+// SEARCH
+// ──────────────────────────────────────────────
+function handleSearch(val) {
+  const dd = document.getElementById('search-dropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  const matches = CLIENTS.filter(c =>
+    c.name.toLowerCase().includes(val.toLowerCase()) ||
+    STRUCT[c.structure].label.toLowerCase().includes(val.toLowerCase())
+  );
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  const s = STRUCT;
+  dd.innerHTML = matches.map(c =>
+    `<div class="search-item" onclick="pickClientFromSearch('${c.key.replace(/'/g,"\\'").replace(/&/g,'\\x26')}')">
+      <span>${c.name}</span>
+      <span class="client-badge ${s[c.structure].badgeClass}" style="font-size:9px">${s[c.structure].label}</span>
+    </div>`
+  ).join('');
+  dd.style.display = '';
+}
+
+function handleSearchKey(e) {
+  if (e.key === 'Escape') { document.getElementById('search-dropdown').style.display = 'none'; }
+  if (e.key === 'Enter') {
+    const first = document.querySelector('.search-item');
+    if (first) first.click();
+  }
+}
+
+function pickClientFromSearch(key) {
+  document.getElementById('search-dropdown').style.display = 'none';
+  document.getElementById('client-search').value = '';
+  pickClient(key);
+}
+
+// Close search dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) {
+    const dd = document.getElementById('search-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+// ──────────────────────────────────────────────
+// DARK MODE
+// ──────────────────────────────────────────────
+function toggleDark() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('cs-dark', isDark ? '1' : '0');
+  document.getElementById('dark-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+function initDark() {
+  if (localStorage.getItem('cs-dark') === '1') {
+    document.documentElement.classList.add('dark');
+    const btn = document.getElementById('dark-toggle');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+// ──────────────────────────────────────────────
+// NOTIFICATION DRAWER
+// ──────────────────────────────────────────────
+let _notifs = [], _unread = 0;
+
+function addNotif(msg, type='info') {
+  _notifs.unshift({ msg, type, time: new Date() });
+  if (_notifs.length > 15) _notifs.pop();
+  _unread++;
+  updateNotifBadge();
+  renderNotifList();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  if (_unread > 0) { badge.textContent = _unread > 9 ? '9+' : _unread; badge.style.display = ''; }
+  else badge.style.display = 'none';
+}
+
+function renderNotifList() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (!_notifs.length) { list.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">No recent activity</div>'; return; }
+  const icons = { success:'✓', error:'✗', info:'ℹ' };
+  const colors = { success:'var(--green)', error:'var(--red)', info:'var(--blue)' };
+  list.innerHTML = _notifs.map(n => `
+    <div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
+      <span style="color:${colors[n.type]||colors.info};font-weight:700;font-size:12px;margin-top:1px">${icons[n.type]||icons.info}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;color:var(--text)">${n.msg}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${n.time.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleNotifDrawer() {
+  const drawer = document.getElementById('notif-drawer');
+  if (!drawer) return;
+  const open = drawer.style.display === '';
+  drawer.style.display = open ? 'none' : '';
+  if (!open) { _unread = 0; updateNotifBadge(); }
+}
+
+function clearNotifs() { _notifs = []; _unread = 0; updateNotifBadge(); renderNotifList(); }
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.notif-wrap')) {
+    const d = document.getElementById('notif-drawer');
+    if (d) d.style.display = 'none';
+  }
+});
+
+
 
 // ──────────────────────────────────────────────
 // GENERATE
@@ -1426,8 +1851,9 @@ async function generate() {
   document.getElementById('s3-title').textContent    = 'Generating Reports\u2026';
   document.getElementById('s3-sub').textContent      = 'Please wait while your reports are built';
 
-  const on = id => document.getElementById(`rc-${id}`)?.classList.contains('on');
+  const on = id => _selectedReports.has(id);
   const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
+  resetProgress();
 
   try {
     let insureds = [], coverages = [], criteria = [], notifications = [];
@@ -1493,29 +1919,49 @@ async function generate() {
 }
 
 function showDownloads(downloads) {
-  document.getElementById('gen-area').style.display  = 'none';
-  document.getElementById('done-area').style.display = 'block';
-  document.getElementById('s3-title').textContent    = 'Reports Ready';
-  document.getElementById('s3-sub').textContent      = `${downloads.length} report${downloads.length!==1?'s':''} generated`;
-  window._dl = downloads;
-  document.getElementById('dl-grid').innerHTML = downloads.map((d,i) =>
-    `<div class="dl-card">
-      <div class="dl-icon">${d.type==='excel'?'\u{1F4CA}':'\u{1F4C4}'}</div>
-      <div class="dl-name">${d.label}</div>
-      <button class="btn btn-primary" style="width:100%" onclick="dlFile(${i})">
-        \u2B07 Download ${d.type==='excel'?'Excel':'PDF'}
-      </button>
-    </div>`
-  ).join('');
+  // Record last report time
+  if (selectedClient) {
+    const safeKey = selectedClient.key.replace(/[^a-z0-9]/gi,'_');
+    localStorage.setItem(`cs-last-report-${safeKey}`, new Date().toISOString());
+  }
+
+  // Auto-download all Excels immediately
+  downloads.filter(d => d.type === 'excel').forEach((d, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(d.blob);
+      a.download = d.filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, i * 300);
+  });
+
+  // Auto-open all PDFs for printing
+  downloads.filter(d => d.type === 'pdf').forEach((d, i) => {
+    setTimeout(() => {
+      const w = window.open('', '_blank');
+      if (w) { w.document.write(d.html); w.document.close(); w.onload = () => { w.focus(); w.print(); }; }
+    }, i * 400);
+  });
+
+  // Return to step 2 and show toast
+  goTo(2);
+  renderGrids();
+  const excels = downloads.filter(d=>d.type==='excel').length;
+  const pdfs   = downloads.filter(d=>d.type==='pdf').length;
+  const parts  = [];
+  if (excels) parts.push(`${excels} Excel${excels>1?'s':''} downloading`);
+  if (pdfs)   parts.push(`${pdfs} PDF${pdfs>1?'s':''} opening`);
+  toast(`✓ ${parts.join(' · ')}`, 'success');
 }
 
 function dlFile(i) {
-  const d = window._dl[i];
+  const d = window._dl?.[i];
+  if (!d) return;
   if (d.type === 'excel') {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(d.blob); a.download = d.filename; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(d.blob); a.download = d.filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
   } else {
-    const w = window.open('', '_blank'); w.document.write(d.html); w.document.close();
-    w.onload = () => { w.focus(); w.print(); };
+    const w = window.open('', '_blank'); if(w){ w.document.write(d.html); w.document.close(); w.onload = () => { w.focus(); w.print(); }; }
   }
 }
 
@@ -2672,15 +3118,28 @@ function fmtDate(s) {
 function chk(id) { return document.getElementById(id)?.checked; }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg, type='') {
+  addNotif(msg, type||'info');
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = `toast show ${type}`;
-  setTimeout(() => t.className='toast', 3200);
+  setTimeout(() => t.className='toast', 3500);
 }
 
 // ──────────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────────
-renderGrids();
+document.addEventListener('DOMContentLoaded', () => {
+  initDark();
+  renderGrids();
+  // Show footer after login
+});
+
+function onLoginSuccess(user) {
+  // Show footer, set user
+  const footer = document.getElementById('app-footer');
+  if (footer) footer.style.display = '';
+  const fu = document.getElementById('footer-user');
+  if (fu && user) fu.textContent = user.email;
+}
 </script>
 </body>
 </html>
