@@ -2090,7 +2090,7 @@ function buildEngagementSummaryHTML(notifications, { reportDate }) {
         subjMap[s]={sent,opens,rate:sent?Math.round(opens/sent*100):0};
       });
     }
-    const topSubj = Object.entries(subjMap).sort((a,b)=>b[1].rate-a[1].rate).slice(0,8);
+    const topSubj = Object.entries(subjMap).sort((a,b)=>b[1].rate-a[1].rate).slice(0,5);
 
     if (!showSubjects || !topSubj.length) return '';
     return `<div class="sec-hdr"><div class="sec-title">Email Intelligence</div></div>
