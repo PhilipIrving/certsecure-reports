@@ -168,8 +168,12 @@
     /* ── Main ── */
     .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 40px; display: flex; flex-direction: column; box-sizing: border-box; }
     .step-panel { display: flex; flex-direction: column; }
-    .step-panel.fading { animation: stepFade 0.2s ease; }
-    @keyframes stepFade { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+    .step-panel { transition: opacity 0.3s ease; }
+    .step-panel.fading { animation: stepFade 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes stepFade {
+      from { opacity: 0; transform: translateY(14px) scale(0.99); }
+      to   { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
 
     /* ── Page header ── */
     .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
@@ -261,17 +265,7 @@
     /* Report grid */
     .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     @media (max-width: 680px) { .report-grid { grid-template-columns: 1fr; } }
-    /* Search */
-    .search-wrap { position: relative; margin-bottom: 14px; flex-shrink: 0; }
-    .search-input { -webkit-appearance: none; appearance: none; width: 100%; box-sizing: border-box; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s; }
-    .search-input:focus { border-color: var(--blue); }
-    .search-input::-webkit-search-decoration, .search-input::-webkit-search-cancel-button, .search-input::-webkit-search-results-button, .search-input::-webkit-search-results-decoration { display:none; -webkit-appearance:none; }
-    .search-input::-ms-clear, .search-input::-ms-reveal { display:none; }
     .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
-    .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1.5px solid var(--blue); border-top: none; border-radius: 0 0 8px 8px; box-shadow: var(--shadow-lg); z-index: 100; max-height: 220px; overflow-y: auto; }
-    .search-item { padding: 9px 14px; cursor: pointer; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .search-item:last-child { border-bottom: none; }
-    .search-item:hover { background: var(--blue-light); }
     /* Progress steps */
     .prog-steps { display: flex; align-items: center; gap: 0; padding: 20px 0 10px; }
     .prog-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
@@ -527,7 +521,7 @@
     <button class="btn-ghost" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     <span id="welcome-msg" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;display:none"></span>
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
-    <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
+    <button class="btn-ghost" onclick="openSettings()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
     
     <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
   </div>
@@ -537,7 +531,7 @@
 <div class="overlay" id="settings-overlay">
   <div class="modal" style="max-width:580px">
     <div class="modal-hdr">
-      <span class="modal-title">⚙ Settings</span>
+      <span class="modal-title" style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</span>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
 
@@ -710,10 +704,6 @@
       <div class="page-title">Report Generator</div>
       <div class="page-sub">Select a client to get started</div>
     </div>
-    <div class="search-wrap">
-      <input type="text" class="search-input" id="client-search" placeholder="Search clients…" oninput="handleSearch(this.value)" onkeydown="handleSearchKey(event)" autocomplete="off">
-      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
-    </div>
     <div class="card">
       <div class="struct-label">General — Shown by Entity Type</div>
       <div class="client-grid" id="grid-general"></div>
@@ -737,7 +727,7 @@
         <div class="banner-struct" id="banner-struct"></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn-ghost" onclick="openSettings()" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.12);border-radius:6px">⚙ Settings</button>
+        <button class="btn-ghost" onclick="openSettings()" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.12);border-radius:6px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
         <span class="banner-change" onclick="goTo(1)">← Change Client</span>
       </div>
     </div>
@@ -939,840 +929,6 @@
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
 <script>
-// ──────────────────────────────────────────────
-// SUPABASE AUTH
-// ──────────────────────────────────────────────
-const SUPABASE_URL = 'https://nwcyavfkmbhcadtrvyqy.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_qpgDwAfvcOQIixrV3uPK-w_HWwIg36o';
-
-let _supabase = null;
-
-function getSupabase() {
-  if (!_supabase) {
-    _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: true, storage: window.sessionStorage, autoRefreshToken: true, detectSessionInUrl: true }
-    });
-  }
-  return _supabase;
-}
-
-function getEdgeUrl() {
-  return localStorage.getItem('cs-edge-url') ||
-    `${SUPABASE_URL}/functions/v1/manage-users`;
-}
-
-async function callEdge(action, payload={}) {
-  const { data:{ session } } = await getSupabase().auth.getSession();
-  const token = session?.access_token;
-  const res = await fetch(getEdgeUrl(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token || SUPABASE_KEY}`,
-    },
-    body: JSON.stringify({ action, ...payload }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-  return json;
-}
-
-function toggleReveal(id, btn) {
-  const el = document.getElementById(id);
-  if (el.type === 'password') { el.type = 'text';  btn.textContent = '🙈'; }
-  else                        { el.type = 'password'; btn.textContent = '👁'; }
-}
-
-function toggleCsvPaths() {
-  const el   = document.getElementById('csv-paths');
-  const icon = document.getElementById('csv-toggle-icon');
-  const open = el.style.display === '';
-  el.style.display   = open ? 'none' : '';
-  icon.textContent   = open ? '▼ show' : '▲ hide';
-}
-
-// ── View switching ──
-function showView(name) {
-  ['signin','forgot','reset'].forEach(v => {
-    document.getElementById(`view-${v}`).style.display = v === name ? '' : 'none';
-  });
-}
-
-// ── Check for password recovery token in URL ──
-function checkRecoveryToken() {
-  const hash = window.location.hash;
-  if (hash.includes('type=recovery') || hash.includes('type=signup')) {
-    // Exchange the token
-    getSupabase().auth.getSession().then(({ data }) => {
-      if (data?.session) {
-        document.getElementById('auth-overlay').style.display = 'flex';
-        document.getElementById('main-app').style.display = 'none';
-        showView('reset');
-      }
-    });
-    return true;
-  }
-  return false;
-}
-
-// ── Sign In ──
-async function doLogin() {
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const btn      = document.getElementById('login-btn');
-  const errEl    = document.getElementById('signin-err');
-
-  if (!email || !password) { showAuthErr('signin-err', 'Please enter your email and password.'); return; }
-  btn.disabled = true; btn.textContent = 'Signing in…'; errEl.style.display = 'none';
-
-  try {
-    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
-    if (error) {
-      showAuthErr('signin-err', error.message === 'Invalid login credentials'
-        ? 'Incorrect email or password. Please try again.' : error.message);
-      btn.disabled = false; btn.textContent = 'Sign In'; return;
-    }
-    // Show welcome message
-    const meta = data.user?.user_metadata || {};
-    const displayName = meta.display_name || data.user?.email?.split('@')[0] || '';
-    const role = meta.role || 'viewer';
-    if (displayName) {
-      const wm = document.getElementById('welcome-msg');
-      if (wm) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
-    }
-    // Store role for viewer restrictions
-    window._userRole = role;
-    window._userEmail = data.user?.email;
-    const adminTab = document.getElementById('stab-admin');
-    if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
-    onLoginSuccess(data.user);
-    document.getElementById('auth-overlay').style.display = 'none';
-    document.getElementById('main-app').style.display = '';
-  } catch(e) {
-    showAuthErr('signin-err', 'Connection error. Please check your internet and try again.');
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
-}
-
-// ── Sign Out ──
-async function doSignOut() {
-  await getSupabase().auth.signOut();
-  window._userRole = null; window._userEmail = null;
-  const wm = document.getElementById('welcome-msg');
-  if (wm) { wm.textContent = ''; wm.style.display = 'none'; }
-  // Restore settings button visibility
-  const settingsBtn = document.querySelector('button[onclick="openSettings()"]');
-  if (settingsBtn) settingsBtn.style.display = '';
-  document.getElementById('login-email').value    = '';
-  document.getElementById('login-password').value = '';
-  document.getElementById('login-btn').disabled   = false;
-  document.getElementById('login-btn').textContent= 'Sign In';
-  document.getElementById('signin-err').style.display  = 'none';
-  document.getElementById('main-app').style.display    = 'none';
-  document.getElementById('auth-overlay').style.display= 'flex';
-  showView('signin');
-}
-
-// ── Forgot Password ──
-async function doForgotPassword() {
-  const email = document.getElementById('forgot-email').value.trim();
-  const btn   = document.getElementById('forgot-btn');
-  if (!email) { showAuthErr('forgot-msg', 'Please enter your email address.', false); return; }
-  btn.disabled = true; btn.textContent = 'Sending…';
-
-  const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href.split('#')[0],
-  });
-
-  if (error) {
-    showAuthErr('forgot-msg', error.message, false);
-    btn.disabled = false; btn.textContent = 'Send Reset Link';
-  } else {
-    showAuthMsg('forgot-msg', `Reset link sent to ${email}. Check your inbox.`);
-    btn.textContent = 'Sent ✓';
-  }
-}
-
-// ── Reset Password ──
-async function doResetPassword() {
-  const pw  = document.getElementById('reset-password').value;
-  const pw2 = document.getElementById('reset-confirm').value;
-  const btn = document.getElementById('reset-btn');
-
-  if (!pw || pw.length < 8) { showAuthErr('reset-msg', 'Password must be at least 8 characters.', false); return; }
-  if (pw !== pw2)            { showAuthErr('reset-msg', 'Passwords do not match.', false); return; }
-
-  btn.disabled = true; btn.textContent = 'Updating…';
-  const { error } = await getSupabase().auth.updateUser({ password: pw });
-
-  if (error) {
-    showAuthErr('reset-msg', error.message, false);
-    btn.disabled = false; btn.textContent = 'Set New Password';
-  } else {
-    showAuthMsg('reset-msg', 'Password updated! Signing you in…');
-    setTimeout(() => {
-      document.getElementById('auth-overlay').style.display = 'none';
-      document.getElementById('main-app').style.display = '';
-      window.location.hash = '';
-    }, 1500);
-  }
-}
-
-// ── Auth helpers ──
-function showAuthErr(id, msg, isErr=true) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.className = isErr ? 'login-err' : 'login-err';
-  el.style.display = 'block';
-}
-function showAuthMsg(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.className = 'login-success';
-  el.style.display = 'block';
-}
-
-// ── Settings tabs ──
-function switchSettingsTab(tab) {
-  ['github','users','admin'].forEach(t => {
-    document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
-    document.getElementById(`stab-content-${t}`).style.display = t === tab ? '' : 'none';
-  });
-  if (tab === 'users') loadUsers();
-}
-
-// ── User management (via Edge Function) ──
-async function loadUsers() {
-  document.getElementById('users-need-key').style.display = 'none';
-  document.getElementById('users-panel').style.display    = '';
-  document.getElementById('users-list').innerHTML =
-    '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>';
-
-  try {
-    const { users } = await callEdge('list');
-    if (!users?.length) {
-      document.getElementById('users-list').innerHTML =
-        '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet. Click + Add User to get started.</div>';
-      return;
-    }
-    document.getElementById('users-list').innerHTML = users.map(u => {
-      const meta = u.raw_user_meta_data || u.user_metadata || {};
-      const name = meta.display_name || '';
-      const role = meta.role || 'viewer';
-      return `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:8px;background:var(--white)">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:13px;font-weight:600;color:var(--navy)">${name || u.email}</div>
-            <span class="role-badge role-${role}">${role}</span>
-          </div>
-          ${name ? `<div style="font-size:11px;color:var(--muted)">${u.email}</div>` : ''}
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at
-            ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            : 'Never'}</div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="showEditUser('${u.id}','${(name||'').replace(/'/g,"\\'")}','${role}')"
-            class="btn-sm-ghost">Edit</button>
-          <button onclick="doResetUserPassword('${u.id}','${u.email}')"
-            class="btn-sm-ghost">Reset PW</button>
-          <button onclick="doDeleteUser('${u.id}','${u.email}')"
-            class="btn-sm-danger">Remove</button>
-        </div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    document.getElementById('users-list').innerHTML =
-      `<div style="color:var(--muted);font-size:12px;padding:10px;background:#EEF1F8;border-radius:7px">
-        <strong>Edge Function not set up yet.</strong><br>
-        Go to Settings → Admin tab for setup instructions.
-        <details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px">Error detail</summary>
-        <div style="font-size:11px;color:var(--red);margin-top:4px">${e.message}</div></details>
-      </div>`;
-  }
-}
-
-async function doAddUser() {
-  const name  = document.getElementById('new-user-name').value.trim();
-  const email = document.getElementById('new-user-email').value.trim();
-  const pass  = document.getElementById('new-user-pass').value.trim();
-  const role  = document.getElementById('new-user-role').value;
-  const msgEl = document.getElementById('add-user-msg');
-
-  if (!email || !pass) { showUserMsg(msgEl, 'Email and password are required.', true); return; }
-  if (pass.length < 8) { showUserMsg(msgEl, 'Password must be at least 8 characters.', true); return; }
-
-  try {
-    await callEdge('create', { email, password: pass, metadata: { display_name: name, role } });
-    showUserMsg(msgEl, `${name || email} added successfully.`, false);
-    document.getElementById('new-user-name').value  = '';
-    document.getElementById('new-user-email').value = '';
-    document.getElementById('new-user-pass').value  = '';
-    setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
-  } catch(e) { showUserMsg(msgEl, e.message, true); }
-}
-
-function showEditUser(uid, name, role) {
-  document.getElementById('edit-user-id').value   = uid;
-  document.getElementById('edit-user-name').value = name;
-  document.getElementById('edit-user-role').value = role;
-  document.getElementById('edit-user-msg').style.display = 'none';
-  document.getElementById('edit-user-modal').style.display = '';
-  document.getElementById('add-user-form').style.display  = 'none';
-}
-function hideEditUser() { document.getElementById('edit-user-modal').style.display = 'none'; }
-
-async function doEditUser() {
-  const uid  = document.getElementById('edit-user-id').value;
-  const name = document.getElementById('edit-user-name').value.trim();
-  const role = document.getElementById('edit-user-role').value;
-  const msgEl= document.getElementById('edit-user-msg');
-  try {
-    await callEdge('updateMeta', { userId: uid, metadata: { display_name: name, role } });
-    showUserMsg(msgEl, 'Saved!', false);
-    setTimeout(() => { hideEditUser(); loadUsers(); }, 900);
-  } catch(e) { showUserMsg(msgEl, e.message, true); }
-}
-
-async function doDeleteUser(uid, email) {
-  if (!confirm(`Remove ${email}?\nThey will lose access immediately.`)) return;
-  try {
-    await callEdge('delete', { userId: uid });
-    toast(`${email} removed`, 'success'); loadUsers();
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-async function doResetUserPassword(uid, email) {
-  const newPw = prompt(`Set a temporary password for ${email}:\n(At least 8 characters)`);
-  if (!newPw) return;
-  if (newPw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
-  try {
-    await callEdge('resetPassword', { userId: uid, password: newPw });
-    toast(`Password reset for ${email}`, 'success');
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-function showUserMsg(el, msg, isErr) {
-  el.style.display = 'block';
-  el.style.color   = isErr ? '#C0392B' : '#1A7F5A';
-  el.textContent   = msg;
-}
-
-function showAddUser() { document.getElementById('add-user-form').style.display = ''; }
-function hideAddUser() {
-  document.getElementById('add-user-form').style.display  = 'none';
-  document.getElementById('add-user-msg').style.display   = 'none';
-}
-
-function saveAdminKey() {
-  const url = document.getElementById('s-edge-url').value.trim();
-  if (url) localStorage.setItem('cs-edge-url', url);
-  else     localStorage.removeItem('cs-edge-url');
-  toast('Admin settings saved', 'success');
-  closeSettings();
-}
-
-// ── Enter key support & recovery check ──
-document.addEventListener('DOMContentLoaded', () => {
-  ['login-email','login-password'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
-  });
-  document.getElementById('forgot-email')?.addEventListener('keydown', e => { if (e.key==='Enter') doForgotPassword(); });
-  ['reset-password','reset-confirm'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doResetPassword(); });
-  });
-  // Check if this is a password reset redirect
-  checkRecoveryToken();
-  // Pre-fill edge URL if saved
-  const eu = localStorage.getItem('cs-edge-url');
-  if (eu) { const el = document.getElementById('s-edge-url'); if(el) el.value = eu; }
-});
-
-// ──────────────────────────────────────────────
-// CLIENT CONFIGURATION
-// 'key' must EXACTLY match the 'client' column in your CSVs.
-// ──────────────────────────────────────────────
-const CLIENTS = [
-  { name: "A G Equipment Company",               key: "A G Equipment Company",               structure: "general"  },
-  { name: "Canadian Pacific Kansas City",         key: "Canadian Pacific Kansas City",         structure: "general"  },
-  { name: "Capital Railroad Contracting, Inc.",   key: "Capital Railroad Contracting, Inc.",   structure: "general"  },
-  { name: "Kolb Grading",                         key: "Kolb Grading",                         structure: "general"  },
-  { name: "Mizuho Bank",                          key: "Mizuho Bank",                          structure: "general"  },
-  { name: "Musselman & Hall Contractors, LLC",    key: "Musselman & Hall Contractors, LLC",    structure: "general"  },
-  { name: "Paragon Geophysical Services, Inc.",   key: "Paragon Geophysical Services, Inc.",   structure: "general"  },
-  { name: "Trinity Chemical Industries LLC",      key: "Trinity Chemical Industries LLC",      structure: "general"  },
-  { name: "United Coal Company LLC",              key: "United Coal Company LLC",              structure: "general"  },
-  { name: "Bauer Foundation Corp.",               key: "Bauer Foundation Corp.",               structure: "project"  },
-  { name: "ESS Companies",                        key: "ESS Companies",                        structure: "project"  },
-  { name: "Scandroli Construction",               key: "Scandroli Construction",               structure: "project"  },
-  { name: "Skyline Developers Construction LLC",  key: "Skyline Developers Construction LLC",  structure: "project"  },
-  { name: "EMMES",                                key: "EMMES",                                structure: "location" },
-  { name: "Gart Properties",                      key: "Gart Properties",                      structure: "location" },
-  { name: "The Abbey Management Company",         key: "The Abbey Management Company",         structure: "location" },
-];
-
-const STRUCT = {
-  general:  { label: "General",        groupLabel: null,      badgeClass: "badge-general"  },
-  project:  { label: "Subcontractors", groupLabel: "Project",     badgeClass: "badge-project"  },
-  location: { label: "Tenants",        groupLabel: "Location",    badgeClass: "badge-location" },
-};
-
-// ──────────────────────────────────────────────
-// PER-CLIENT CUSTOM FIELD CONFIG
-// on: true = checked by default; on: false = available but unchecked
-// Coverage flags (air, auto, gl, wc, etc.) are excluded entirely.
-// ──────────────────────────────────────────────
-const CLIENT_FIELD_CONFIG = {
-  "A G Equipment Company": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false  },
-  ],
-  "Canadian Pacific Kansas City": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false  },
-    { key:'contractNumber',         label:'Contract Number',           on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Capital Railroad Contracting, Inc.": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Kolb Grading": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-  ],
-  "Mizuho Bank": [
-    { key:'loanName',               label:'Loan Name',                 on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Musselman & Hall Contractors, LLC": [
-    { key:'insuranceType',          label:'Insurance Type',            on:false  },
-  ],
-  "Paragon Geophysical Services, Inc.": [
-    { key:'insuranceType',          label:'Insurance Type',            on:false  },
-  ],
-  "Trinity Chemical Industries LLC": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'ofCars',                 label:'# of Cars',                 on:false },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "United Coal Company LLC": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false  },
-  ],
-  "Bauer Foundation Corp.": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false },
-    { key:'projectName',            label:'Project Name',              on:false  },
-    { key:'projectNumber',          label:'Project Number',            on:false  },
-    { key:'insuranceType',          label:'Insurance Type',            on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "ESS Companies": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'jobDescription',         label:'Job Description',           on:false  },
-    { key:'jobNumber',              label:'Job Number',                on:false  },
-    { key:'subcontractNumber',      label:'Subcontract Number',        on:false  },
-    { key:'insuranceType',          label:'Insurance Type',            on:false  },
-    { key:'projectSpecific',        label:'Project Specific',          on:false },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Scandroli Construction": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'projectName',            label:'Project Name',              on:false  },
-    { key:'projectId',              label:'Project ID',                on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Skyline Developers Construction LLC": [
-    { key:'projectName',            label:'Project Name',              on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "EMMES": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false  },
-    { key:'propertyLocation',       label:'Property Location',         on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "Gart Properties": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'propertyLocation',       label:'Property Location',         on:false  },
-    { key:'propertyManager',        label:'Property Manager',          on:false  },
-    { key:'tenantType',             label:'Tenant Type',               on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-  "The Abbey Management Company": [
-    { key:'entityId',               label:'Entity ID',                 on:false  },
-    { key:'entityType',             label:'Entity Type',               on:false  },
-    { key:'propertyLocation',       label:'Property Location',         on:false  },
-    { key:'rsf',                    label:'Rentable Sq. Footage',      on:false  },
-    { key:'notes',                  label:'Notes',                     on:false },
-  ],
-};
-
-// ──────────────────────────────────────────────
-// CSV COLUMN MAPPINGS
-// ──────────────────────────────────────────────
-const C = {
-  client:        'client',
-  entity_name:   'insured_name',
-  insured_id:    'insured_id',
-  status:        'compliance_status',
-  verify_status: 'verification_status',
-  next_exp:      'next_expiration',
-  email:         'primary_contact_email',
-  active:        'active',
-  paused:        'paused',
-  cov_client:    'client',
-  coverage_type: 'coverage_type',
-  exp_date:      'expiration_date',
-  crit_client:   'client',
-  crit_name:     'insured_name',
-  crit_email:    'primary_contact_email',
-  overall_comp:  'overall_compliance',
-  nc_reasons:    'non_compliance_reasons',
-  notif_client:  'Client',
-  notif_email:   'Email',
-  eng_type:      'Type',
-  sent_at:       'Date',
-  subject:       'Subject',
-};
-
-const isEngSend  = n => n[C.eng_type] === 'send';
-const isEngOpen  = n => n[C.eng_type] === 'open';
-const isEngClick = n => n[C.eng_type] === 'click';
-const isEngIssue = n => ['hard_bounce','soft_bounce','reject','rejected','deferral','spam'].includes((n[C.eng_type]||'').toLowerCase());
-
-// ──────────────────────────────────────────────
-// SETTINGS
-// ──────────────────────────────────────────────
-const DEFAULTS = {
-  owner: 'PhilipIrving',
-  repo:  'evident-powerbi',
-  branch:'main',
-  pat:   '',
-  insuredsPath:     'data/insureds.csv',
-  coveragesPath:    'data/coverages.csv',
-  criteriaPath:     'data/criteria.csv',
-  customPropsPath:  'data/custom_properties.csv',
-  notificationsPath:'data/engagement.csv',
-};
-
-function getSettings() {
-  return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('cs-settings') || '{}') };
-}
-
-function openSettings() {
-  const s = getSettings();
-  document.getElementById('s-owner').value        = s.owner;
-  document.getElementById('s-repo').value         = s.repo;
-  document.getElementById('s-branch').value       = s.branch;
-  document.getElementById('s-pat').value          = s.pat;
-  document.getElementById('s-insureds').value     = s.insuredsPath;
-  document.getElementById('s-coverages').value    = s.coveragesPath;
-  document.getElementById('s-criteria').value     = s.criteriaPath;
-  document.getElementById('s-customprops').value  = s.customPropsPath;
-  document.getElementById('s-notifications').value= s.notificationsPath;
-  document.getElementById('settings-overlay').classList.add('open');
-}
-
-function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
-
-function saveSettings() {
-  localStorage.setItem('cs-settings', JSON.stringify({
-    owner:            document.getElementById('s-owner').value.trim(),
-    repo:             document.getElementById('s-repo').value.trim(),
-    branch:           document.getElementById('s-branch').value.trim() || 'main',
-    pat:              document.getElementById('s-pat').value.trim(),
-    insuredsPath:     document.getElementById('s-insureds').value.trim(),
-    coveragesPath:    document.getElementById('s-coverages').value.trim(),
-    criteriaPath:     document.getElementById('s-criteria').value.trim(),
-    customPropsPath:  document.getElementById('s-customprops').value.trim(),
-    notificationsPath:document.getElementById('s-notifications').value.trim(),
-  }));
-  closeSettings();
-  toast('Settings saved', 'success');
-}
-
-// ──────────────────────────────────────────────
-// DATA LOADING
-// ──────────────────────────────────────────────
-async function fetchCSV(path) {
-  const { owner, repo, branch, pat } = getSettings();
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
-  const headers = { 'Accept': 'application/vnd.github.v3.raw' };
-  if (pat) headers['Authorization'] = `Bearer ${pat}`;
-  const res = await fetch(url, { headers });
-  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in \u2699 Settings.`);
-  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}. Check Settings \u2192 CSV paths.`);
-  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}).`);
-  return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
-}
-
-async function triggerRefresh() {
-  const { owner, repo, pat } = getSettings();
-  if (!pat) { toast('Add a GitHub PAT in Settings to use Refresh Data', 'error'); return; }
-  const btn = document.getElementById('refresh-btn');
-  btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
-  try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
-      body: JSON.stringify({ ref: 'main' })
-    });
-    (res.ok || res.status === 204)
-      ? toast('Sync triggered \u2014 data will refresh in ~2 min', 'success')
-      : toast('Sync failed. Check your PAT in Settings.', 'error');
-  } catch(e) { toast('Network error \u2014 could not trigger sync', 'error'); }
-  finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
-}
-
-// ──────────────────────────────────────────────
-// UI
-// ──────────────────────────────────────────────
-let selectedClient = null;
-
-function renderGrids() {
-  ['general','project','location'].forEach(struct => {
-    document.getElementById(`grid-${struct}`).innerHTML =
-      CLIENTS.filter(c => c.structure === struct).map(c =>
-        `<div class="client-card" id="cc-${c.key.replace(/[^a-z0-9]/gi,'_')}" onclick="pickClient('${c.key.replace(/'/g,"\'").replace(/&/g,"\x26")}')"><div class="client-name">${c.name}</div><span class="client-badge ${STRUCT[struct].badgeClass}">${STRUCT[struct].label}</span><div class="client-last-report" id="lr-${c.key.replace(/[^a-z0-9]/gi,'_')}"></div></div>`
-      ).join('');
-  });
-  updateLastReportBadges();
-}
-
-function pickClient(key) {
-  selectedClient = CLIENTS.find(c => c.key === key);
-  document.querySelectorAll('.client-card').forEach(el => el.classList.remove('selected'));
-  const safeKey = key.replace(/[^a-z0-9]/gi,'_');
-  document.getElementById(`cc-${safeKey}`)?.classList.add('selected');
-  updateCustomFieldsUI();
-  _selectedReports.clear();
-  _activePanel = null;
-  ['cs','cd','es','ed'].forEach(function(id) {
-    var c = document.getElementById('rc-' + id);
-    if (c) c.classList.remove('on');
-  });
-  setTimeout(function() { goTo(2); }, 80);
-}
-
-function updateLastReportBadges() {
-  CLIENTS.forEach(c => {
-    const safeKey = c.key.replace(/[^a-z0-9]/gi,'_');
-    const el = document.getElementById(`lr-${safeKey}`);
-    if (!el) return;
-    const ts = localStorage.getItem(`cs-last-report-${safeKey}`);
-    if (ts) {
-      const d = new Date(ts);
-      el.textContent = `Last: ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
-    }
-  });
-}
-
-function updateCustomFieldsUI() {
-  if (!selectedClient) return;
-  const fields = CLIENT_FIELD_CONFIG[selectedClient.key] || [];
-  ['cd','ed'].forEach(prefix => {
-    const hdr  = document.getElementById(`${prefix}-cf-hdr`);
-    const list = document.getElementById(`${prefix}-cf-list`);
-    if (!hdr || !list) return;
-    if (!fields.length) { hdr.style.display='none'; list.innerHTML=''; return; }
-    hdr.style.display = '';
-    list.innerHTML = fields.map(f =>
-      `<label class="cb-item"><input type="checkbox" id="${prefix}-cf-${f.key.replace(/[^a-z0-9]/gi,'_')}" ${f.on?'checked':''}> ${f.label}</label>`
-    ).join('');
-  });
-}
-
-function getCustomFields(prefix) {
-  const fields = CLIENT_FIELD_CONFIG[selectedClient?.key] || [];
-  return fields.filter(f => {
-    const el = document.getElementById(`${prefix}-cf-${f.key.replace(/[^a-z0-9]/gi,'_')}`);
-    return el && el.checked;
-  });
-}
-
-// ──────────────────────────────────────────────
-// NAVIGATION & TRANSITIONS
-// ──────────────────────────────────────────────
-let _currentStep = 1;
-function goTo(n) {
-  [1,2,3].forEach(i => {
-    const el = document.getElementById(`step-${i}`);
-    if (el) el.style.display = 'none';
-  });
-  const next = document.getElementById(`step-${n}`);
-  if (!next) return;
-  next.style.display = '';
-  next.classList.remove('fading');
-  void next.offsetWidth; // force reflow
-  next.classList.add('fading');
-  _currentStep = n;
-  if (n === 2 && selectedClient) {
-    const s = STRUCT[selectedClient.structure];
-    document.getElementById('banner-name').textContent   = selectedClient.name;
-    document.getElementById('banner-struct').textContent = s.groupLabel ? `${s.label} \u2014 Shown by ${s.groupLabel}` : s.label;
-    document.getElementById('cd-entity-lbl').textContent = s.groupLabel ? s.groupLabel + ' List' : 'Entity List';
-    if (!document.getElementById('g-date').value)
-      document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
-    updateGenBtn();
-  }
-}
-
-// ──────────────────────────────────────────────
-// SIDEBAR REPORT PANEL
-// ──────────────────────────────────────────────
-const REPORT_DEFS = [
-  { id:'cs', label:'Compliance Summary',  sub:'Executive overview PDF', type:'PDF',   color:'#DC2626' },
-  { id:'cd', label:'Compliance Detail',   sub:'Full entity-level data',  type:'Excel', color:'#16A34A' },
-  { id:'es', label:'Engagement Summary',  sub:'Email engagement PDF',    type:'PDF',   color:'#DC2626' },
-  { id:'ed', label:'Engagement Detail',   sub:'Full engagement data',    type:'Excel', color:'#16A34A' },
-];
-let _activePanel = null;
-let _selectedReports = new Set();
-
-// Store panel HTML from original report-card bodies
-const PANEL_CONTENT = {};
-
-function renderSidebar() {
-  const sidebar = document.querySelector('.rc-sidebar');
-  if (!sidebar) return;
-  sidebar.innerHTML = REPORT_DEFS.map(r => {
-    const on = _selectedReports.has(r.id);
-    return `<div class="rc-sidebar-item ${_activePanel===r.id?'active':''} ${on?'selected':''}"
-      onclick="selectSidebarItem('${r.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="rcs-title">${r.label}</div>
-        <input type="checkbox" ${on?'checked':''} onclick="event.stopPropagation();toggleSidebarReport('${r.id}',this.checked)"
-          style="margin-top:2px;cursor:pointer;accent-color:var(--blue)">
-      </div>
-      <div class="rcs-sub">${r.sub}</div>
-      <div class="rcs-row">
-        <span style="font-size:10px;font-weight:700;color:${r.color};background:${r.color}18;padding:1px 7px;border-radius:10px">${r.type}</span>
-        ${on ? '<span style="font-size:10px;color:var(--blue)">✓ Selected</span>' : ''}
-      </div>
-    </div>`;
-  }).join('');
-  if (_activePanel) renderPanel(_activePanel);
-}
-
-function selectSidebarItem(id) {
-  _activePanel = id;
-  renderSidebar();
-  renderPanel(id);
-}
-
-function toggleSidebarReport(id, checked) {
-  if (checked) _selectedReports.add(id); else _selectedReports.delete(id);
-  renderSidebar();
-  updateGenBtn();
-}
-
-function renderPanel(id) {
-  const panel = document.getElementById('rc-panel-content');
-  if (!panel) return;
-  const def = REPORT_DEFS.find(r => r.id === id);
-  if (!def) return;
-  // Get the stored panel HTML from hidden report-card bodies
-  const body = document.getElementById(`rc-body-${id}`);
-  if (body) {
-    panel.innerHTML = `
-      <div class="rc-panel-hdr">${def.label}</div>
-      <div class="rc-panel-sub">${def.sub} &mdash; <span style="color:${def.color};font-weight:600">${def.type}</span></div>
-      ${body.innerHTML}`;
-  } else {
-    panel.innerHTML = `<div class="rc-panel-hdr">${def.label}</div><div style="color:var(--muted);font-size:12px;margin-top:8px">Configuration for this report is not available.</div>`;
-  }
-}
-
-function toggleReport(id) {
-  const card = document.getElementById('rc-' + id);
-  if (_selectedReports.has(id)) {
-    _selectedReports.delete(id);
-    if (card) card.classList.remove('on');
-  } else {
-    _selectedReports.add(id);
-    if (card) card.classList.add('on');
-  }
-  updateGenBtn();
-}
-
-function updateGenBtn() {
-  document.getElementById('gen-btn').disabled = _selectedReports.size === 0;
-}
-
-// ──────────────────────────────────────────────
-// PROGRESS STEPS
-// ──────────────────────────────────────────────
-let _progStep = 0;
-function setProgress(lbl, sub) {
-  document.getElementById('prog-lbl').textContent = lbl;
-  document.getElementById('prog-sub').textContent = sub || '';
-  // Advance progress step based on label keyword
-  const low = lbl.toLowerCase();
-  let step = 0;
-  if (low.includes('building') || low.includes('generating') || low.includes('compliance') || low.includes('engagement')) step = 1;
-  if (low.includes('finaliz') || low.includes('pdf') || low.includes('summary') || low.includes('ready')) step = 2;
-  _progStep = Math.max(_progStep, step);
-  [0,1,2].forEach(i => {
-    const el = document.getElementById(`ps-${i}`);
-    if (!el) return;
-    if (i < _progStep)      el.className = 'prog-step done';
-    else if (i === _progStep) el.className = 'prog-step active';
-    else                    el.className = 'prog-step pending';
-    el.querySelector('.prog-dot').textContent = i < _progStep ? '✓' : String(i+1);
-  });
-}
-
-function resetProgress() {
-  _progStep = 0;
-  [0,1,2].forEach(i => {
-    const el = document.getElementById(`ps-${i}`);
-    if (el) { el.className = 'prog-step pending'; el.querySelector('.prog-dot').textContent = String(i+1); }
-  });
-}
-
-// ──────────────────────────────────────────────
-// SEARCH
-// ──────────────────────────────────────────────
-function handleSearch(val) {
-  const dd = document.getElementById('search-dropdown');
-  if (!val.trim()) { dd.style.display = 'none'; return; }
-  const matches = CLIENTS.filter(c =>
-    c.name.toLowerCase().includes(val.toLowerCase()) ||
-    STRUCT[c.structure].label.toLowerCase().includes(val.toLowerCase())
-  );
-  if (!matches.length) { dd.style.display = 'none'; return; }
-  const s = STRUCT;
-  dd.innerHTML = matches.map(c =>
-    `<div class="search-item" onclick="pickClientFromSearch('${c.key.replace(/'/g,"\\'").replace(/&/g,'\\x26')}')">
-      <span>${c.name}</span>
-      <span class="client-badge ${s[c.structure].badgeClass}" style="font-size:9px">${s[c.structure].label}</span>
-    </div>`
-  ).join('');
-  dd.style.display = '';
-}
-
-function handleSearchKey(e) {
-  if (e.key === 'Escape') { document.getElementById('search-dropdown').style.display = 'none'; }
-  if (e.key === 'Enter') {
-    const first = document.querySelector('.search-item');
-    if (first) first.click();
-  }
-}
-
-function pickClientFromSearch(key) {
-  document.getElementById('search-dropdown').style.display = 'none';
-  document.getElementById('client-search').value = '';
-  pickClient(key);
-}
-
-// Close search dropdown when clicking outside
-document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) {
-    const dd = document.getElementById('search-dropdown');
-    if (dd) dd.style.display = 'none';
-  }
-});
 
 // ──────────────────────────────────────────────
 // DARK MODE
@@ -1848,6 +1004,31 @@ document.addEventListener('click', e => {
 // ──────────────────────────────────────────────
 // GENERATE
 // ──────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// PROGRESS STEPS
+// ──────────────────────────────────────────────
+let _progStep = 0;
+function setProgress(lbl, sub, explicitStep) {
+  document.getElementById('prog-lbl').textContent = lbl;
+  document.getElementById('prog-sub').textContent = sub || '';
+  if (explicitStep !== undefined) _progStep = Math.max(_progStep, explicitStep);
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('ps-' + i);
+    if (!el) return;
+    if (i < _progStep)        el.className = 'prog-step done';
+    else if (i === _progStep) el.className = 'prog-step active';
+    else                      el.className = 'prog-step pending';
+    el.querySelector('.prog-dot').textContent = i < _progStep ? '✓' : String(i+1);
+  });
+}
+function resetProgress() {
+  _progStep = 0;
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('ps-' + i);
+    if (el) { el.className = 'prog-step pending'; el.querySelector('.prog-dot').textContent = String(i+1); }
+  });
+}
+
 async function generate() {
   if (typeof ExcelJS === 'undefined') {
     alert('ExcelJS library failed to load. Please check your internet connection and refresh the page.');
@@ -1869,10 +1050,10 @@ async function generate() {
     let insureds = [], coverages = [], criteria = [], notifications = [];
 
     if (E.cs || E.cd || E.ed) {
-      setProgress('Fetching compliance data\u2026', `Loading ${s.insuredsPath}`);
+      setProgress('Fetching compliance data\u2026', `Loading ${s.insuredsPath}`, 0);
       insureds = (await fetchCSV(s.insuredsPath)).filter(r => r[C.client] === selectedClient.key);
 
-      setProgress('Fetching custom properties\u2026', `Loading ${s.customPropsPath}`);
+      setProgress('Fetching custom properties\u2026', `Loading ${s.customPropsPath}`, 0);
       try {
         const allProps = (await fetchCSV(s.customPropsPath)).filter(r => r['client'] === selectedClient.key);
         insureds = enrichInsureds(insureds, allProps);
@@ -1880,16 +1061,16 @@ async function generate() {
     }
 
     if (E.cd || E.cs) {
-      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`);
+      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`, 0);
       try { coverages = (await fetchCSV(s.coveragesPath)).filter(r => r[C.cov_client] === selectedClient.key); }
       catch(e) { console.warn('coverages skip:', e.message); }
-      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`);
+      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`, 0);
       try { criteria = (await fetchCSV(s.criteriaPath)).filter(r => r[C.crit_client] === selectedClient.key); }
       catch(e) { console.warn('criteria skip:', e.message); }
     }
 
     if (E.es || E.ed) {
-      setProgress('Fetching engagement data\u2026', `Loading ${s.notificationsPath}`);
+      setProgress('Fetching engagement data\u2026', `Loading ${s.notificationsPath}`, 0);
       try { notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key); }
       catch(e) { console.warn('notifications skip:', e.message); }
     }
@@ -1900,24 +1081,26 @@ async function generate() {
     const downloads    = [];
 
     if (E.cd) {
-      setProgress('Building Compliance Detail…', 'Generating Excel workbook');
+      setProgress('Building Compliance Detail…', 'Generating Excel workbook', 1);
       const wb = await buildComplianceDetailXL(insureds, coverages, criteria, { statusFilter, reportDate });
       downloads.push({ label:'Compliance Detail', type:'excel', blob: await xlBlob(wb), filename:`${selectedClient.name} \u2014 Compliance Detail.xlsx` });
     }
     if (E.ed) {
-      setProgress('Building Engagement Detail…', 'Generating Excel workbook');
+      setProgress('Building Engagement Detail…', 'Generating Excel workbook', 1);
       const wb = await buildEngagementDetailXL(insureds, notifications, { engWindow, reportDate });
       downloads.push({ label:'Engagement Detail', type:'excel', blob: await xlBlob(wb), filename:`${selectedClient.name} \u2014 Engagement Detail.xlsx` });
     }
     if (E.cs) {
-      setProgress('Building Compliance Summary\u2026', 'Generating PDF');
+      setProgress('Building Compliance Summary\u2026', 'Generating PDF', 1);
       downloads.push({ label:'Compliance Summary', type:'pdf', html: buildComplianceSummaryHTML(insureds, coverages, criteria, { reportDate }), filename:`${selectedClient.name} \u2014 Compliance Summary.pdf` });
     }
     if (E.es) {
-      setProgress('Building Engagement Summary\u2026', 'Generating PDF');
+      setProgress('Building Engagement Summary\u2026', 'Generating PDF', 1);
       downloads.push({ label:'Engagement Summary', type:'pdf', html: buildEngagementSummaryHTML(notifications, { reportDate }), filename:`${selectedClient.name} \u2014 Engagement Summary.pdf` });
     }
 
+    setProgress('Finalizing…', 'Preparing your downloads', 2);
+    await new Promise(r => setTimeout(r, 400));
     showDownloads(downloads);
   } catch(e) {
     console.error(e);
