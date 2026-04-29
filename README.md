@@ -1,283 +1,228 @@
-# CertSecure Report Generator
-### Serviced by HUB International
+# HUB CertSecure — Report Generator
 
-Internal tool for generating compliance and engagement reports across HUB CertSecure clients.
-No login required · No API keys for end users · Runs entirely in the browser.
+A single-file web application for generating compliance and engagement reports across all HUB CertSecure clients. Built and maintained by Philip Irving, Account Manager, HUB CertSecure (HUB International).
 
 ---
 
-## What This Does
+## Access
 
-The Report Generator reads compliance and engagement data from synced CSV files in the `evident-powerbi` repository and builds four report types for any of 16 clients — all inside the browser. No server needed, nothing to install.
-
-| Report | Format | What it covers |
-|---|---|---|
-| Compliance Summary | PDF | KPIs, status breakdown, COI status, expiring coverage |
-| Compliance Detail | Excel (5 sheets) | Full entity-level compliance data, NC reasons, expiring coverage |
-| Engagement Summary | PDF | Email KPIs, open rate, delivery issues, 60-day funnel |
-| Engagement Detail | Excel (5 sheets) | No COI list, no engagement, NC + no recent engagement, undeliverables |
-
----
-
-## File Structure
-
-When you push to GitHub, the repo should look exactly like this:
+The app is hosted on GitHub Pages:
 
 ```
-certsecure-reports/
-├── index.html          ← the app (ROOT level — not in a subfolder)
-├── README.md
-└── assets/
-    └── logo.png
+https://philipirving.github.io/certsecure-reports/
 ```
 
-> **GitHub Pages serves `index.html` automatically from the root.** If it ends up in a subfolder, the app will not load.
+> A custom domain can be configured — contact your administrator.
 
 ---
 
-## Setup (First Time)
+## Authentication
 
-### 1. Create a new GitHub repository
+Login is handled via **Supabase**. Each user has a display name and one of three roles:
 
-1. Go to [github.com/new](https://github.com/new)
-2. Name it `certsecure-reports`
-3. Set visibility to **Public** — GitHub Pages requires this on a free account
-4. Do **not** initialize with any files (no README, no .gitignore)
+| Role | Access |
+|---|---|
+| **Account Administrator** | Generate all reports, view client configuration (read-only) |
+| **Account Manager** | Everything above + edit client settings (go-live dates, structure, active status) |
+| **System Administrator** | Full access — includes adding/deleting clients, managing users, and application settings |
 
-### 2. Push the files
+To reset your password, use the **Forgot Password** link on the login screen.
 
-Open a terminal in the folder where you downloaded `index.html` and run:
+To update your role, a System Administrator must edit your user in **Settings → Users**, or you can update your metadata directly in the Supabase dashboard.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/PhilipIrving/certsecure-reports.git
-git push -u origin main
+---
+
+## Application Structure
+
+The app has two main tabs:
+
+### Report Generator
+Three-step workflow:
+1. **Select a client** from the grid (General / Subcontractors / Tenants)
+2. **Configure reports** — select which reports to generate and set options
+3. **Generate** — files download automatically and appear in Recent Activity
+
+The **↻ Refresh Data** button (center of page) triggers a data sync from the Evident platform.  
+The **🏢 HUB-Wide Annual** button generates an across-all-clients annual review.
+
+### Client Configuration
+Manage the client roster. Changes write directly to `config/clients.json` in the repository.
+
+- **Account Managers** can edit existing clients (go-live date, structure, active status)
+- **System Administrators** can also add and delete clients
+- Inactive clients are hidden from the report picker but preserved in the config
+
+---
+
+## Reports
+
+All seven reports are generated **client-side in the browser** using live data from the repository. No server processing is required.
+
+### Client Reports (require client selection)
+
+| Report | Type | Data Source | Notes |
+|---|---|---|---|
+| Compliance Summary | PDF | `data/` CSVs | Executive overview — KPIs, status breakdown, NC reasons, expiring coverage |
+| Compliance Detail | Excel | `data/` CSVs | Entity-level data across 5 sheets |
+| Engagement Summary | PDF | `data/` CSVs | Email activity for selected window (30/60/90 days) |
+| Engagement Detail | Excel | `data/` CSVs | 5 sheets — No COI, No Engagement, NC+No Engagement, Undeliverables |
+| Year End Review | PDF | `snapshots/YYYY/` | Full-year narrative — trend, engagement, expirations, outstanding NC |
+| Producer Overview | PDF | `snapshots/YYYY/` | External-facing one-pager for producers |
+
+### Program-Wide Reports (no client required)
+
+| Report | Type | Data Source | Notes |
+|---|---|---|---|
+| HUB-Wide Annual | PDF | `snapshots/YYYY/` | All clients combined — totals, trend, most improved, common NC reasons |
+
+### PDF Output
+PDFs open the browser print dialog automatically. Select **Save as PDF** as the destination. All generated files also appear in the **🔔 Recent Activity** drawer for re-download without regenerating.
+
+---
+
+## Data Sources
+
+All data is synced nightly from the Evident platform and stored in the `evident-sync` repository.
+
+```
+evident-sync/
+├── config/
+│   └── clients.json          ← Client roster, go-live dates, structure
+├── data/
+│   ├── insureds.csv
+│   ├── coverages.csv
+│   ├── criteria.csv
+│   ├── custom_properties.csv
+│   └── engagement.csv
+├── snapshots/
+│   └── YYYY/
+│       └── YYYY-MM/
+│           ├── insureds.csv
+│           ├── coverages.csv
+│           ├── criteria.csv
+│           ├── custom_properties.csv
+│           ├── engagement.csv
+│           ├── summaries.csv
+│           └── sync_metadata.csv
+├── reports/                  ← Generated report output (server-side)
+└── src/
+    ├── generate_reports.py
+    ├── build_compliance_summary.py
+    ├── build_compliance_detail.py
+    ├── build_engagement_summary.py
+    ├── build_engagement_detail.py
+    ├── build_yearend_client.py
+    ├── build_producer_overview.py
+    └── build_yearend_hubwide.py
 ```
 
-### 3. Enable GitHub Pages
+### CSV Column Reference
 
-1. In the repo, go to **Settings → Pages**
-2. Under **Source**, select `Deploy from a branch`
-3. Set branch to **main**, folder to **/ (root)**
-4. Click **Save**
-5. Your app will be live at: `https://philipirving.github.io/certsecure-reports/`
+**insureds.csv** — `client`, `insured_id`, `insured_name`, `primary_contact_email`, `compliance_status`, `verification_status`, `next_expiration`, `active`, `paused`
 
-Share that URL with the team. It's live immediately.
+**coverages.csv** — `client`, `insured_id`, `insured_name`, `coverage_type`, `expiration_date`
 
----
+**criteria.csv** — `client`, `insured_id`, `insured_name`, `primary_contact_email`, `overall_compliance`, `non_compliance_reasons` *(pipe-delimited)*
 
-## Configure the App
+**custom_properties.csv** — `client`, `insured_id`, `field_name`, `field_value`
 
-Click **⚙ Settings** in the top-right corner and fill in:
-
-| Field | What to enter | Default |
-|---|---|---|
-| GitHub Repository Owner | Your GitHub username | `PhilipIrving` |
-| Repository Name | The repo where your CSVs live | `evident-powerbi` |
-| Branch | Branch name | `main` |
-| GitHub PAT | Token with `workflow` scope — only needed for **Refresh Data** | *(leave blank if not using)* |
-| Insureds / Parties CSV | Path to compliance CSV in your data repo | `data/insureds.csv` |
-| Requirements / Coverage CSV | Path to per-coverage data CSV | `data/requirements.csv` |
-| Notifications / Engagement CSV | Path to email engagement CSV | `data/notifications.csv` |
-
-Settings are saved in your browser's local storage — enter once, persists across sessions.
+**engagement.csv** — `Event ID`, `Date`, `Email`, `Type`, `Subject`, `Client`
 
 ---
 
-## How to Generate a Report
+## GitHub Actions Workflows
 
-### Step 1 — Select a Client
-
-All 16 clients are listed in three groups:
-
-- **General** (9 clients) — compliance tracked by Entity Type
-- **Subcontractors** (4 clients) — compliance tracked by Project
-- **Tenants** (3 clients) — compliance tracked by Location
-
-Click any client card to continue.
-
-### Step 2 — Configure
-
-Click a report card to enable it (highlights blue). Enable any combination — one or all four at once.
-
-**Global Filters** apply across all enabled reports:
-- **Expiring Within** — limit data to entities expiring within 7 / 30 / 60 / 90 days
-- **Report Date** — defaults to today; change this for backdated reports
-
-### Step 3 — Download
-
-- **Excel files** — download directly to your computer
-- **PDF files** — open in a new browser tab, then `Ctrl+P` / `Cmd+P` → **Save as PDF**
-  - Enable **Background graphics** in the print dialog to keep colors and formatting
+| Workflow | File | Trigger | Purpose |
+|---|---|---|---|
+| Sync | `sync.yml` | Manual (Refresh Data button) or scheduled | Pulls latest data from Evident API |
+| Generate Reports | `generate-reports.yml` | Manual | Server-side report generation (all clients in parallel) |
+| Monthly Snapshot | `monthly-snapshot.yml` | Scheduled (monthly) | Captures a point-in-time snapshot |
 
 ---
 
-## The Four Reports
+## Settings
 
-### Compliance Summary (PDF)
+Accessible via the ⚙ gear icon in the header *(System Administrators only)*.
 
-Executive one-page overview of compliance status.
-
-| Section | What it shows |
+| Setting | Description |
 |---|---|
-| Program KPI Cards | Active, Compliant, Non-Compliant, New — with % of active |
-| Compliance Status Breakdown | Color-coded count and % for each status |
-| COI Submission Status | COI on File vs. No COI on File |
-| No COI on File — Breakdown | Of no-COI entities: how many are NC, New, or Compliant |
-| Expiring Coverage | Entity counts at 7 / 30 / 60 / 90 day thresholds + summary table |
+| Data Owner | Repository owner username (e.g. `PhilipIrving`) |
+| Repository | Repository name (e.g. `evident-sync`) |
+| Branch | Branch to read from (default: `main`) |
+| Access Token | Personal access token with `repo` and `workflow` scopes |
+| CSV Paths | Configurable paths to each data file |
+| Admin — Edge Function URL | Supabase Edge Function URL for user management |
+
+Settings are stored in `localStorage` — they persist across sessions on the same browser but must be re-entered on a new device.
 
 ---
 
-### Compliance Detail (Excel)
+## User Management
 
-Full data workbook with entity-level compliance data.
+System Administrators can manage users in **Settings → Users**:
+- Add users with display name and role
+- Edit display name and role
+- Reset passwords
+- Remove users
 
-| Sheet | What it contains |
+User data is stored in **Supabase Auth** (`https://nwcyavfkmbhcadtrvyqy.supabase.co`).
+
+The Edge Function `manage-users` must be deployed to Supabase for user management to work. See `manage-users-edge-function.ts` for the latest version.
+
+---
+
+## Client Configuration Reference
+
+Clients are defined in `config/clients.json`. Each entry:
+
+```json
+{
+  "client_name": "Canadian Pacific Kansas City",
+  "rp_common_name": "cpkansascity",
+  "program_start_date": "2025-05-01",
+  "go_live_date": "2025-11-05",
+  "structure": "general",
+  "active": true
+}
+```
+
+| Field | Description |
 |---|---|
-| Summary | Key metrics: Active, Compliant, NC, New, COI counts |
-| Entity / Project / Location List | Every entity with status, expiration, and notification email |
-| Expiring Coverage | Coverage expiring within 90 days, sorted soonest-first |
-| NC by Coverage & Criteria | Non-compliant entities ranked by coverage type |
-| Non-Compliance Reasons | Full NC reason text per entity and coverage type |
-
-**Filter:** All / Non-Compliant Only / Compliant Only / New & Pending Only
+| `client_name` | Must exactly match the `client` column in all CSVs — do not change after go-live |
+| `rp_common_name` | API name used for platform access and logo files |
+| `program_start_date` | Date the client joined the program |
+| `go_live_date` | Date the platform went live for the client — used for engagement reporting |
+| `structure` | `general` (vendors), `project` (subcontractors), or `location` (tenants) |
+| `active` | `true` = visible in report picker · `false` = hidden but preserved |
 
 ---
 
-### Engagement Summary (PDF)
+## Roles & Permissions
 
-Executive one-page overview of email engagement.
+| Permission | Account Administrator | Account Manager | System Administrator |
+|---|---|---|---|
+| Generate all reports | ✓ | ✓ | ✓ |
+| View client configuration | ✓ | ✓ | ✓ |
+| Edit client settings | ✗ | ✓ | ✓ |
+| Add / delete clients | ✗ | ✗ | ✓ |
+| Manage users | ✗ | ✗ | ✓ |
+| Access settings | ✗ | ✗ | ✓ |
 
-| Section | What it shows |
+---
+
+## Version History
+
+| Version | Summary |
 |---|---|
-| Email KPI Cards | Sent, Opened, Clicked, Delivery Issues — with rates |
-| Open Rate Breakdown | Opened vs. Not Opened |
-| Deliverability Status | No Issues vs. Issues Detected |
-| Delivery Issue Breakdown | Hard Bounce, Rejected, Soft Bounce, Deferral — with severity |
-| 60-Day Activity Window + Funnel | Sent / Opened / Clicked in last 60 days + visual funnel |
+| v0.08 | Refresh Data moved to page header · GitHub branding removed from UI · Two-tab layout (Report Generator + Client Configuration) · Dynamic client loading from clients.json · Three-tier role system · Display name + role badge in header |
+| v0.07 | Role system (Account Administrator / Account Manager / System Administrator) · Client Configuration tab with write-back to clients.json |
+| v0.06 | Dynamic client loading · go_live_date wired to engagement reports |
+| v0.05 | Two-tab layout added |
+| v0.04 | HUB-Wide Annual · Year End Review · Producer Overview · all reports client-side · PDF iframe print |
+| v0.03 | Notification drawer with re-download · Refresh Data workflow fix |
+| v0.02 | Auth restored · version on login screen · clients visible |
+| v0.01 | Initial versioned release |
 
 ---
 
-### Engagement Detail (Excel)
-
-Full engagement workbook identifying entities that need follow-up.
-
-| Sheet | What it identifies |
-|---|---|
-| Summary | Emails Sent, Opened, Clicked, Issues, No COI count |
-| No COIs on File | Entities with no certificate submitted |
-| No Engagement Since Go-Live | Entities with zero email activity in history |
-| NC + No Recent Engagement | Non-Compliant entities with no engagement in selected window |
-| Undeliverable Emails | All emails with a delivery failure — type, date, subject |
-
-**Filter:** Engagement window — 30 / **60** (default) / 90 days
-
----
-
-## Refreshing Data
-
-The app reads CSVs synced to `evident-powerbi` by a scheduled GitHub Action. For most reports, the scheduled data is current enough.
-
-**To force a fresh sync:**
-
-1. Open ⚙ Settings → enter a GitHub PAT with `workflow` scope
-2. Click **↻ Refresh Data** in the header
-3. The sync runs in `evident-powerbi` and refreshes in ~2 minutes
-
----
-
-## Client Key Reference
-
-Each client has a `key` that must match the `client` column value in your CSVs.
-If a client's report is empty, verify the key below matches what's actually in your data.
-
-| Client | Key | Structure |
-|---|---|---|
-| A G Equipment | `agequipment` | General |
-| Canadian Pacific Kansas City | `cpkansascity` | General |
-| Capital Railroad Contracting, Inc. | `capitalrailroad` | General |
-| Kolb Grading | `kolbgrading` | General |
-| Mizuho Bank | `mizuhobank` | General |
-| Musselman & Hall Contractors, LLC | `musselmanhall` | General |
-| Paragon Geophysical Services, Inc. | `paragongeophysical` | General |
-| Trinity Chemical Industries LLC | `trinitychemical` | General |
-| United Coal Company LLC | `unitedcoal` | General |
-| BAUER Foundation Corp. | `bauer` | Subcontractors |
-| ESS Companies | `esscompanies` | Subcontractors |
-| Scandroli Construction | `scandroli` | Subcontractors |
-| Skyline Developers Construction LLC | `skylinedevelopers` | Subcontractors |
-| EMMES | `emmes` | Tenants |
-| Gart Properties | `gartproperties` | Tenants |
-| The Abbey Management Company | `theabbeycompany` | Tenants |
-
-To update a key: open `index.html`, find the `CLIENTS` array near the top of the `<script>` block, and change the `key` value for the relevant client.
-
----
-
-## CSV Column Reference
-
-If your CSV column names differ from the defaults, update the `C` object near the top of `index.html`.
-
-**`insureds.csv`**
-
-| App field | Default CSV column |
-|---|---|
-| Entity Name | `display_name` |
-| Contract Number | `contract_number` |
-| Entity Type (General clients) | `party_type` |
-| Project Name (Subcontractor clients) | `project_name` |
-| Location Name (Tenant clients) | `location_name` |
-| Compliance Status | `compliance_status` |
-| Verification Status | `verification_status` |
-| Next Expiration | `next_expiration` |
-| Notification Email | `contact_email` |
-| Has COI | `has_coi` |
-
-**`requirements.csv`**
-
-| App field | Default CSV column |
-|---|---|
-| Coverage Type | `coverage_type` |
-| Non-Compliance Reason | `non_compliance_reason` |
-| Expiration Date | `expiration_date` |
-| Days Until Expiration | `days_until_expiration` |
-
-**`notifications.csv`**
-
-| App field | Default CSV column |
-|---|---|
-| Email Address | `email_address` |
-| Issue Type | `issue_type` |
-| Sent At | `sent_at` |
-| Subject | `subject` |
-| Opened | `opened` |
-| Clicked | `clicked` |
-
----
-
-## Troubleshooting
-
-**"Could not load CSV" error**
-Check Settings — verify repo name, branch, and file paths are correct.
-
-**Client shows 0 entities**
-The client `key` doesn't match your CSV. See the Client Key Reference above.
-
-**Expiring Coverage or NC sheets are missing from Excel**
-These require `requirements.csv`. If that file doesn't exist in the repo, the sheets are silently skipped.
-
-**PDF colors not appearing when saved**
-In the print dialog, open "More settings" and enable **Background graphics**.
-
-**Refresh Data says "Sync failed"**
-Your PAT may have expired. Create a new one at [github.com/settings/tokens](https://github.com/settings/tokens) with `workflow` scope.
-
-**CSVs won't load (private repo)**
-GitHub raw file URLs only work for public repos. Make the data repo public, or contact Philip.
-
----
-
-*HUB CertSecure — Internal use only. Questions? Contact Philip Irving.*
+*HUB CertSecure — Serviced by HUB International · Confidential*
