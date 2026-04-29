@@ -452,7 +452,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.02</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.03</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -552,7 +552,7 @@
       </div>
       <div class="form-grp">
         <label class="form-lbl">Repository Name</label>
-        <input type="text" id="s-repo" placeholder="e.g. evident-powerbi">
+        <input type="text" id="s-repo" placeholder="e.g. evident-sync">
       </div>
       <div class="form-grp">
         <label class="form-lbl">Branch</label>
@@ -727,10 +727,7 @@
         <div class="banner-name" id="banner-name"></div>
         <div class="banner-struct" id="banner-struct"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn-ghost" onclick="openSettings()" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.12);border-radius:6px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
-        <span class="banner-change" onclick="goTo(1)">← Change Client</span>
-      </div>
+      <span class="banner-change" onclick="goTo(1)">← Change Client</span>
     </div>
 
     <div class="card">
@@ -924,7 +921,7 @@
 </main>
 
 <div class="toast" id="toast"></div>
-<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.02</div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.03</div>
 </div><!-- end main-app -->
 
 
@@ -1325,7 +1322,7 @@ const isEngIssue = n => ['hard_bounce','soft_bounce','reject','rejected','deferr
 
 // ── Settings ──
 const DEFAULTS = {
-  owner:'PhilipIrving', repo:'evident-powerbi', branch:'main', pat:'',
+  owner:'PhilipIrving', repo:'evident-sync', branch:'main', pat:'',
   insuredsPath:'data/insureds.csv', coveragesPath:'data/coverages.csv',
   criteriaPath:'data/criteria.csv', customPropsPath:'data/custom_properties.csv',
   notificationsPath:'data/engagement.csv',
@@ -1378,7 +1375,7 @@ async function triggerRefresh() {
   const btn = document.getElementById('refresh-btn');
   btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sync.yml/dispatches`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/evident-sync.yml/dispatches`, {
       method:'POST', headers:{'Authorization':`Bearer ${pat}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
       body: JSON.stringify({ ref:'main' })
     });
@@ -1499,16 +1496,29 @@ function renderNotifList() {
   const list = document.getElementById('notif-list');
   if (!list) return;
   if (!_notifs.length) { list.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">No recent activity</div>'; return; }
-  const icons = { success:'✓', error:'✗', info:'ℹ' };
+  const icons  = { success:'✓', error:'✗', info:'ℹ' };
   const colors = { success:'var(--green)', error:'var(--red)', info:'var(--blue)' };
-  list.innerHTML = _notifs.map(n => `
-    <div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
-      <span style="color:${colors[n.type]||colors.info};font-weight:700;font-size:12px;margin-top:1px">${icons[n.type]||icons.info}</span>
-      <div style="flex:1">
-        <div style="font-size:12px;color:var(--text)">${n.msg}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${n.time.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
-      </div>
-    </div>`).join('');
+  list.innerHTML = _notifs.map(n => {
+    const actionBtn = n._download ? (() => {
+      const dl = n._download;
+      if (dl.type === 'excel') {
+        const url = URL.createObjectURL(dl.blob);
+        return '<a href="' + url + '" download="' + dl.filename + '" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap" onclick="setTimeout(()=>URL.revokeObjectURL(this.href),3000)">↓ Download</a>';
+      } else {
+        return dl._blobUrl ? '<a href="' + dl._blobUrl + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↗ Open PDF</a>' : '';
+      }
+    })() : '';
+    return '<div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">' +
+      '<span style="color:' + (colors[n.type]||colors.info) + ';font-weight:700;font-size:12px;margin-top:1px">' + (icons[n.type]||icons.info) + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + n.msg + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">' +
+          '<div style="font-size:10px;color:var(--muted)">' + n.time.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+          actionBtn +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function toggleNotifDrawer() {
@@ -1644,37 +1654,80 @@ function showDownloads(downloads) {
   // Record last report time
   if (selectedClient) {
     const safeKey = selectedClient.key.replace(/[^a-z0-9]/gi,'_');
-    localStorage.setItem(`cs-last-report-${safeKey}`, new Date().toISOString());
+    localStorage.setItem('cs-last-report-' + safeKey, new Date().toISOString());
   }
 
-  // Auto-download all Excels immediately
+  // Auto-download Excels
   downloads.filter(d => d.type === 'excel').forEach((d, i) => {
     setTimeout(() => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(d.blob);
       a.download = d.filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     }, i * 300);
   });
 
-  // Auto-open all PDFs for printing
-  downloads.filter(d => d.type === 'pdf').forEach((d, i) => {
-    setTimeout(() => {
-      const w = window.open('', '_blank');
-      if (w) { w.document.write(d.html); w.document.close(); w.onload = () => { w.focus(); w.print(); }; }
-    }, i * 400);
+  // PDFs — create blob URLs (avoids popup blocker)
+  downloads.filter(d => d.type === 'pdf').forEach(d => {
+    const blob = new Blob([d.html], { type: 'text/html' });
+    d._blobUrl = URL.createObjectURL(blob);
   });
 
-  // Return to step 2 and show toast
+  // Return to step 2
   goTo(2);
   renderGrids();
-  const excels = downloads.filter(d=>d.type==='excel').length;
-  const pdfs   = downloads.filter(d=>d.type==='pdf').length;
+
+  const excels = downloads.filter(d => d.type === 'excel').length;
+  const pdfs   = downloads.filter(d => d.type === 'pdf').length;
   const parts  = [];
-  if (excels) parts.push(`${excels} Excel${excels>1?'s':''} downloading`);
-  if (pdfs)   parts.push(`${pdfs} PDF${pdfs>1?'s':''} opening`);
-  toast(`✓ ${parts.join(' · ')}`, 'success');
+  if (excels) parts.push(excels + ' Excel' + (excels>1?'s':'') + ' downloading');
+  if (pdfs)   parts.push(pdfs + ' PDF' + (pdfs>1?'s':'') + ' ready in activity');
+  toast('✓ ' + parts.join(' · '), 'success');
+
+  // Add all files to notification drawer with re-download links
+  downloads.forEach(d => addDownloadNotif(d));
+
+  // Auto-open the notification drawer so user sees their files
+  const drawer = document.getElementById('notif-drawer');
+  if (drawer) { drawer.style.display = ''; _unread = 0; updateNotifBadge(); }
+}
+
+function addDownloadNotif(d) {
+  const isExcel = d.type === 'excel';
+  const icon    = isExcel ? '📊' : '📄';
+  const color   = isExcel ? 'var(--green)' : 'var(--blue)';
+  const time    = new Date();
+
+  // Build a notif entry with a re-download button
+  _notifs.unshift({ msg: d.label, type: 'success', time, _download: d });
+  if (_notifs.length > 15) _notifs.pop();
+
+  // Re-render list right away
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  const icons  = { success:'✓', error:'✗', info:'ℹ' };
+  const colors = { success:'var(--green)', error:'var(--red)', info:'var(--blue)' };
+  list.innerHTML = _notifs.map((n, idx) => {
+    const actionBtn = n._download ? (() => {
+      const dl = n._download;
+      if (dl.type === 'excel') {
+        const url = URL.createObjectURL(dl.blob);
+        return '<a href="' + url + '" download="' + dl.filename + '" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap" onclick="setTimeout(()=>URL.revokeObjectURL(this.href),3000)">↓ Download</a>';
+      } else {
+        return '<a href="' + dl._blobUrl + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↗ Open PDF</a>';
+      }
+    })() : '';
+    return '<div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">' +
+      '<span style="color:' + (colors[n.type]||colors.info) + ';font-weight:700;font-size:12px;margin-top:1px">' + (icons[n.type]||icons.info) + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + n.msg + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">' +
+          '<div style="font-size:10px;color:var(--muted)">' + n.time.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+          actionBtn +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function dlFile(i) {
@@ -1682,8 +1735,8 @@ function dlFile(i) {
   if (!d) return;
   if (d.type === 'excel') {
     const a = document.createElement('a'); a.href = URL.createObjectURL(d.blob); a.download = d.filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  } else {
-    const w = window.open('', '_blank'); if(w){ w.document.write(d.html); w.document.close(); w.onload = () => { w.focus(); w.print(); }; }
+  } else if (d._blobUrl) {
+    window.open(d._blobUrl, '_blank');
   }
 }
 
