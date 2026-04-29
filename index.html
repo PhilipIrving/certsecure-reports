@@ -159,10 +159,10 @@
     .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Main ── */
-    .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; height: calc(100vh - 64px - 36px); display: flex; flex-direction: column; overflow: hidden; }
-    .step-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; opacity: 1; transform: translateX(0); transition: opacity 0.18s ease, transform 0.18s ease; }
-    .step-panel.out-left  { opacity: 0; transform: translateX(-24px); }
-    .step-panel.out-right { opacity: 0; transform: translateX(24px); }
+    .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; height: calc(100vh - 64px - 36px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+    .step-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .step-panel.fading { animation: stepFade 0.2s ease; }
+    @keyframes stepFade { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
 
     /* ── Page header ── */
     .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
@@ -267,7 +267,7 @@
     .rc-panel-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
     /* Search */
     .search-wrap { position: relative; margin-bottom: 14px; flex-shrink: 0; }
-    .search-input { width: 100%; box-sizing: border-box; padding: 9px 14px 9px 36px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s; }
+    .search-input { width: 100%; box-sizing: border-box; padding: 9px 14px 9px 32px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s; }
     .search-input:focus { border-color: var(--blue); }
     .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
     .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1.5px solid var(--blue); border-top: none; border-radius: 0 0 8px 8px; box-shadow: var(--shadow-lg); z-index: 100; max-height: 220px; overflow-y: auto; }
@@ -715,11 +715,11 @@
       <div class="page-sub">Select a client to get started</div>
     </div>
     <div class="search-wrap">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon" style="font-size:13px;color:var(--muted);position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;line-height:1">&#x2315;</span>
       <input type="text" class="search-input" id="client-search" placeholder="Search clients…" oninput="handleSearch(this.value)" onkeydown="handleSearchKey(event)" autocomplete="off">
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
-    <div class="card" style="flex:1;min-height:0">
+    <div class="card" style="flex:1;min-height:0;overflow-y:auto">
       <div class="struct-label">General — Shown by Entity Type</div>
       <div class="client-grid" id="grid-general"></div>
       <div class="struct-label">Subcontractors — Shown by Project</div>
@@ -860,7 +860,7 @@
   </div>
 
   <!-- ── STEP 3: GENERATING / DONE ── -->
-  <div id="step-3" class="step-panel" style="display:none">
+  <div id="step-3" class="step-panel" style="display:none;flex:1;min-height:0">
     <div class="page-hdr">
       <div class="page-title" id="s3-title">Generating Reports…</div>
       <div class="page-sub" id="s3-sub">Please wait while your reports are built</div>
@@ -923,7 +923,6 @@
   <span style="color:var(--border)">|</span>
   <span>Report Generator</span>
   <span style="margin-left:auto;display:flex;align-items:center;gap:16px">
-    <span id="footer-user" style="color:var(--muted)"></span>
     <span style="font-weight:600;color:var(--blue)">v0.75</span>
   </span>
 </footer>
@@ -1539,7 +1538,7 @@ function pickClient(key) {
   updateCustomFieldsUI();
   _selectedReports.clear();
   _activePanel = null;
-  setTimeout(() => goTo(2, 'forward'), 80);
+  setTimeout(() => goTo(2), 80);
 }
 
 function updateLastReportBadges() {
@@ -1582,25 +1581,17 @@ function getCustomFields(prefix) {
 // NAVIGATION & TRANSITIONS
 // ──────────────────────────────────────────────
 let _currentStep = 1;
-function goTo(n, direction='forward') {
-  const current = document.getElementById(`step-${_currentStep}`);
-  const next    = document.getElementById(`step-${n}`);
+function goTo(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById(`step-${i}`);
+    if (el) el.style.display = 'none';
+  });
+  const next = document.getElementById(`step-${n}`);
   if (!next) return;
-
-  // Animate out
-  const outClass = direction === 'forward' ? 'out-left' : 'out-right';
-  if (current) {
-    current.classList.add(outClass);
-    setTimeout(() => { current.style.display = 'none'; current.classList.remove(outClass); }, 180);
-  }
-  // Animate in
-  setTimeout(() => {
-    next.style.display = '';
-    const inClass = direction === 'forward' ? 'out-right' : 'out-left';
-    next.classList.add(inClass);
-    requestAnimationFrame(() => { requestAnimationFrame(() => { next.classList.remove(inClass); }); });
-  }, 90);
-
+  next.style.display = '';
+  next.classList.remove('fading');
+  void next.offsetWidth; // force reflow
+  next.classList.add('fading');
   _currentStep = n;
   if (n === 2 && selectedClient) {
     const s = STRUCT[selectedClient.structure];
@@ -3137,8 +3128,7 @@ function onLoginSuccess(user) {
   // Show footer, set user
   const footer = document.getElementById('app-footer');
   if (footer) footer.style.display = '';
-  const fu = document.getElementById('footer-user');
-  if (fu && user) fu.textContent = user.email;
+
 }
 </script>
 </body>
