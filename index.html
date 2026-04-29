@@ -452,7 +452,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.03</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.06em">v0.04</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -522,6 +522,7 @@
     <button class="btn-ghost" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     <span id="welcome-msg" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;display:none"></span>
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
+    <button class="btn-ghost" onclick="openHubWide()" style="background:rgba(56,114,184,0.25);border-color:rgba(56,114,184,0.5)" title="HUB-Wide Annual Review">🏢 HUB Annual</button>
     <button class="btn-ghost" onclick="openSettings()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
     
     <button class="btn-ghost" onclick="doSignOut()" style="margin-left:8px;border-left:1px solid rgba(255,255,255,0.15);padding-left:14px">⎋ Sign Out</button>
@@ -695,6 +696,29 @@
   </div>
 </div>
 
+<!-- ═══════════════════ HUB-WIDE ANNUAL MODAL ═══════════════════ -->
+<div class="overlay" id="hubwide-overlay">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr">
+      <span class="modal-title">🏢 HUB-Wide Annual Review</span>
+      <button class="modal-close" onclick="closeHubWide()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.5">
+      Generates a full annual review across all clients. Runs via GitHub Actions (~2–4 min) and appears in Recent Activity when ready.
+    </div>
+    <div class="form-grp">
+      <label class="form-lbl">Report Year</label>
+      <input type="text" id="hw-year" placeholder="e.g. 2025" maxlength="4" style="width:140px">
+      <div class="form-hint">Leave blank to use the most recent snapshot year.</div>
+    </div>
+    <div id="hw-msg" style="display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:10px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" onclick="closeHubWide()">Cancel</button>
+      <button class="btn btn-primary" id="hw-btn" onclick="triggerHubWide()">🚀 Generate</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════ MAIN ═══════════════════ -->
 <div id="main-app" style="display:none">
 <main class="main">
@@ -833,6 +857,64 @@
         </div>
 
       </div><!-- /report-grid -->
+
+      <!-- Server-generated reports (GitHub Actions) -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+          Server-Generated Reports
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">via GitHub Actions (~2–4 min) · files appear in Recent Activity</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+
+          <!-- Year End Review -->
+          <div class="report-card" id="rc-yer">
+            <div class="report-card-hdr" onclick="toggleReport('yer')">
+              <div class="rc-dot"></div>
+              <div><div class="rc-title">Year End Review</div><div class="rc-sub">Annual snapshot PDF</div></div>
+              <span class="rc-type type-pdf">PDF</span>
+            </div>
+            <div class="report-card-body">
+              <div class="sec-div">Options</div>
+              <div class="form-grp">
+                <label class="form-lbl">Report Year</label>
+                <input type="text" id="yer-year" placeholder="e.g. 2025" maxlength="4" style="width:120px">
+                <div class="form-hint">Reads from snapshots/YYYY/</div>
+              </div>
+              <div class="form-grp" style="margin-top:8px">
+                <label class="form-lbl">Producer Name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+                <input type="text" id="yer-producer" placeholder="e.g. Jane Smith">
+                <div class="form-hint">Personalizes the cover page</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Producer Overview -->
+          <div class="report-card" id="rc-pro">
+            <div class="report-card-hdr" onclick="toggleReport('pro')">
+              <div class="rc-dot"></div>
+              <div><div class="rc-title">Producer Overview</div><div class="rc-sub">Client snapshot for producers</div></div>
+              <span class="rc-type type-pdf">PDF</span>
+            </div>
+            <div class="report-card-body">
+              <div class="sec-div">Options</div>
+              <div class="form-grp">
+                <label class="form-lbl">Producer Name</label>
+                <input type="text" id="pro-producer" placeholder="e.g. Jane Smith">
+                <div class="form-hint">Required — shown on cover page</div>
+              </div>
+              <div class="form-grp" style="margin-top:8px">
+                <label class="form-lbl">Snapshot Month <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+                <input type="text" id="pro-month" placeholder="e.g. 2025-12">
+                <div class="form-hint">Leave blank for most recent snapshot</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Placeholder for symmetry — hidden -->
+          <div style="visibility:hidden"></div>
+
+        </div>
+      </div>
     </div>
 
     <div style="margin-top:14px;flex-shrink:0">
@@ -921,7 +1003,7 @@
 </main>
 
 <div class="toast" id="toast"></div>
-<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.03</div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.04</div>
 </div><!-- end main-app -->
 
 
@@ -1384,6 +1466,123 @@ async function triggerRefresh() {
   finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
 }
 
+// ──────────────────────────────────────────────
+// GITHUB ACTIONS — SERVER-SIDE REPORT GENERATION
+// ──────────────────────────────────────────────
+async function triggerActionReport(inputs, expectedFilename, label) {
+  const { owner, repo, pat } = getSettings();
+  if (!pat) { toast('A GitHub PAT is required in Settings to generate server-side reports.', 'error'); return; }
+
+  // Add a pending entry to the notification drawer
+  const pendingId = 'pending-' + Date.now();
+  _notifs.unshift({ msg: label + ' \u2014 Generating\u2026', type: 'info', time: new Date(), _pending: true, _pendingId: pendingId });
+  if (_notifs.length > 15) _notifs.pop();
+  renderNotifList();
+  const drawer = document.getElementById('notif-drawer');
+  if (drawer) { drawer.style.display = ''; _unread = 0; updateNotifBadge(); }
+
+  try {
+    // Fire the workflow
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/evident-generate.yml/dispatches`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+      body: JSON.stringify({ ref: 'main', inputs })
+    });
+    if (!res.ok && res.status !== 204) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    toast(`\u2713 ${label} queued \u2014 check Recent Activity in ~3 min`, 'success');
+
+    // Start polling for the output file
+    pollForReport(owner, repo, pat, expectedFilename, label, pendingId);
+  } catch(e) {
+    updatePendingNotif(pendingId, label + ' \u2014 Failed: ' + e.message, 'error');
+    toast('Failed to trigger report: ' + e.message, 'error');
+  }
+}
+
+async function pollForReport(owner, repo, pat, filename, label, pendingId) {
+  const maxAttempts = 36; // 36 × 10s = 6 minutes
+  const interval    = 10000;
+  let attempts = 0;
+
+  const check = async () => {
+    attempts++;
+    try {
+      const url = `https://api.github.com/repos/${owner}/${repo}/contents/reports/${encodeURIComponent(filename)}`;
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': `Bearer ${pat}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const downloadUrl = data.download_url;
+        // Replace pending notif with download link
+        updatePendingNotif(pendingId, label, 'success', downloadUrl, filename);
+        toast(`\u2713 ${label} ready \u2014 check Recent Activity`, 'success');
+        return;
+      }
+    } catch(e) { /* keep polling */ }
+
+    if (attempts < maxAttempts) {
+      const elapsed = Math.round(attempts * interval / 60000);
+      updatePendingNotif(pendingId, `${label} \u2014 Generating\u2026 (~${elapsed}m elapsed)`, 'info');
+      setTimeout(check, interval);
+    } else {
+      updatePendingNotif(pendingId, `${label} \u2014 Timed out. Check GitHub Actions for status.`, 'error');
+    }
+  };
+
+  // Start polling after 60s initial delay (Actions take time to spin up)
+  setTimeout(check, 60000);
+}
+
+function updatePendingNotif(pendingId, msg, type, downloadUrl, filename) {
+  const n = _notifs.find(n => n._pendingId === pendingId);
+  if (n) {
+    n.msg = msg; n.type = type; n._pending = false;
+    if (downloadUrl) n._serverFile = { url: downloadUrl, filename };
+  }
+  renderNotifList();
+}
+
+// ── HUB-Wide Annual ──
+function openHubWide() {
+  document.getElementById('hubwide-overlay').classList.add('open');
+  const yr = document.getElementById('hw-year');
+  if (yr && !yr.value) yr.value = String(new Date().getFullYear() - 1);
+}
+function closeHubWide() {
+  document.getElementById('hubwide-overlay').classList.remove('open');
+  document.getElementById('hw-msg').style.display = 'none';
+}
+async function triggerHubWide() {
+  const year = document.getElementById('hw-year').value.trim();
+  const btn  = document.getElementById('hw-btn');
+  const msg  = document.getElementById('hw-msg');
+  btn.disabled = true; btn.textContent = 'Queuing\u2026';
+  msg.style.display = 'none';
+
+  const inputs = {
+    client: 'A G Equipment Company', // required by workflow but ignored for hub_wide_annual
+    hub_wide_annual: 'true',
+    report_year: year,
+  };
+  const year_str  = year || String(new Date().getFullYear() - 1);
+  const filename  = `HUB-Wide - Annual Review ${year_str}.pdf`;
+  const label     = `HUB-Wide Annual Review ${year_str}`;
+
+  await triggerActionReport(inputs, filename, label);
+
+  msg.textContent = `\u2713 Queued! File will appear in Recent Activity when ready (~3 min).`;
+  msg.style.cssText = 'display:block;font-size:12px;padding:8px 12px;border-radius:7px;background:var(--green-bg);color:var(--green);margin-top:10px';
+  btn.textContent = 'Generate';
+  btn.disabled = false;
+  setTimeout(() => closeHubWide(), 2000);
+}
+
+
+
 // ── UI ──
 let selectedClient = null;
 function renderGrids() {
@@ -1412,6 +1611,10 @@ function pickClient(key) {
   _selectedReports.clear();
   ['cs','cd','es','ed'].forEach(id => {
     const c = document.getElementById('rc-' + id); if (c) c.classList.remove('on');
+  });
+  // Clear server report inputs
+  ['yer-year','yer-producer','pro-producer','pro-month'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
   });
   setTimeout(function() { goTo(2); }, 80);
 }
@@ -1461,6 +1664,8 @@ function goTo(n) {
 
 // ── Report selection ──
 let _selectedReports = new Set();
+const SERVER_REPORTS = new Set(['yer','pro']); // reports handled by GitHub Actions
+
 function toggleReport(id) {
   const card = document.getElementById('rc-' + id);
   if (_selectedReports.has(id)) { _selectedReports.delete(id); if (card) card.classList.remove('on'); }
@@ -1469,7 +1674,13 @@ function toggleReport(id) {
 }
 function updateGenBtn() {
   const btn = document.getElementById('gen-btn');
-  if (btn) btn.disabled = _selectedReports.size === 0;
+  if (!btn) return;
+  btn.disabled = _selectedReports.size === 0;
+  const hasServer = [..._selectedReports].some(id => SERVER_REPORTS.has(id));
+  const hasLocal  = [..._selectedReports].some(id => !SERVER_REPORTS.has(id));
+  if (hasServer && hasLocal)  { btn.textContent = '⬇ Generate All Reports'; }
+  else if (hasServer)         { btn.textContent = '🚀 Queue Server Reports'; }
+  else                        { btn.textContent = '⬇ Generate Reports'; }
 }
 
 // ──────────────────────────────────────────────
@@ -1496,20 +1707,26 @@ function renderNotifList() {
   const list = document.getElementById('notif-list');
   if (!list) return;
   if (!_notifs.length) { list.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">No recent activity</div>'; return; }
-  const icons  = { success:'✓', error:'✗', info:'ℹ' };
+  const icons  = { success:'✓', error:'✗', info:'⏳' };
   const colors = { success:'var(--green)', error:'var(--red)', info:'var(--blue)' };
   list.innerHTML = _notifs.map(n => {
-    const actionBtn = n._download ? (() => {
+    let actionBtn = '';
+    if (n._serverFile) {
+      // Direct download URL from GitHub repo
+      actionBtn = '<a href="' + n._serverFile.url + '" download="' + n._serverFile.filename + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↓ Download</a>';
+    } else if (n._pending) {
+      actionBtn = '<span style="font-size:10px;color:var(--muted);font-style:italic">queued…</span>';
+    } else if (n._download) {
       const dl = n._download;
       if (dl.type === 'excel') {
         const url = URL.createObjectURL(dl.blob);
-        return '<a href="' + url + '" download="' + dl.filename + '" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap" onclick="setTimeout(()=>URL.revokeObjectURL(this.href),3000)">↓ Download</a>';
+        actionBtn = '<a href="' + url + '" download="' + dl.filename + '" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap" onclick="setTimeout(()=>URL.revokeObjectURL(this.href),3000)">↓ Download</a>';
       } else {
-        return dl._blobUrl ? '<a href="' + dl._blobUrl + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↗ Open PDF</a>' : '';
+        actionBtn = dl._blobUrl ? '<a href="' + dl._blobUrl + '" target="_blank" style="font-size:10px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap">↗ Open PDF</a>' : '';
       }
-    })() : '';
+    }
     return '<div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">' +
-      '<span style="color:' + (colors[n.type]||colors.info) + ';font-weight:700;font-size:12px;margin-top:1px">' + (icons[n.type]||icons.info) + '</span>' +
+      '<span style="color:' + (colors[n.type]||colors.info) + ';font-weight:700;font-size:12px;margin-top:1px">' + (icons[n.type]||'ℹ') + '</span>' +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + n.msg + '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px">' +
@@ -1583,6 +1800,34 @@ async function generate() {
 
   const on = id => _selectedReports.has(id);
   const E = { cs: on('cs'), cd: on('cd'), es: on('es'), ed: on('ed') };
+
+  // ── Handle server-side reports first (non-blocking) ──
+  if (on('yer') || on('pro')) {
+    const reportDate = document.getElementById('g-date').value || new Date().getFullYear().toString();
+    const clientName = selectedClient?.key || '';
+
+    if (on('yer')) {
+      const year     = document.getElementById('yer-year')?.value?.trim() || String(new Date().getFullYear() - 1);
+      const producer = document.getElementById('yer-producer')?.value?.trim() || '';
+      await triggerActionReport({
+        client: clientName, year_end_review: 'true',
+        report_year: year, producer_name: producer,
+      }, `${clientName} - Year End Review ${year}.pdf`, `${clientName} — Year End Review ${year}`);
+    }
+    if (on('pro')) {
+      const producer = document.getElementById('pro-producer')?.value?.trim() || '';
+      if (!producer) { toast('Producer name is required for Producer Overview.', 'error'); }
+      else {
+        const month = document.getElementById('pro-month')?.value?.trim() || '';
+        await triggerActionReport({
+          client: clientName, producer_overview: 'true',
+          producer_name: producer, report_year: month ? month.split('-')[0] : '',
+        }, `${clientName} - Producer Overview.pdf`, `${clientName} — Producer Overview (${producer})`);
+      }
+    }
+    // If only server reports selected, return after queuing
+    if (!on('cs') && !on('cd') && !on('es') && !on('ed')) { goTo(2); return; }
+  }
   resetProgress();
 
   try {
