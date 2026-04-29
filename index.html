@@ -465,7 +465,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.05</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.07</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -533,7 +533,10 @@
       </div>
     </div>
     <button class="btn-ghost" id="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
-    <span id="welcome-msg" style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:500;display:none"></span>
+    <div id="welcome-wrap" style="display:none;display:flex;align-items:center;gap:8px;display:none">
+      <span id="welcome-name" style="color:rgba(255,255,255,0.85);font-size:12px;font-weight:600"></span>
+      <span id="welcome-role" style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:12px"></span>
+    </div>
     <button class="btn-ghost" id="refresh-btn" onclick="triggerRefresh()">↻ Refresh Data</button>
     <button class="btn-ghost" onclick="openSettings()"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> Settings</button>
     
@@ -551,20 +554,20 @@
 
     <!-- Tabs -->
     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px">
-      <button class="stab active" id="stab-github" onclick="switchSettingsTab('github')">GitHub</button>
+      <button class="stab active" id="stab-github" onclick="switchSettingsTab('github')">Data Source</button>
       <button class="stab" id="stab-users" onclick="switchSettingsTab('users')">Users</button>
       <button class="stab" id="stab-admin" onclick="switchSettingsTab('admin')">Admin</button>
     </div>
 
-    <!-- GitHub tab -->
+    <!-- Data Source tab -->
     <div id="stab-content-github">
       <div class="form-grp">
-        <label class="form-lbl">GitHub Repository Owner</label>
+        <label class="form-lbl">Data Owner</label>
         <input type="text" id="s-owner" placeholder="e.g. PhilipIrving">
-        <div class="form-hint">Your GitHub username or organization name</div>
+        <div class="form-hint">Username or organization that owns the data repository</div>
       </div>
       <div class="form-grp">
-        <label class="form-lbl">Repository Name</label>
+        <label class="form-lbl">Repository</label>
         <input type="text" id="s-repo" placeholder="e.g. evident-sync">
       </div>
       <div class="form-grp">
@@ -572,9 +575,9 @@
         <input type="text" id="s-branch" placeholder="main">
       </div>
       <div class="form-grp">
-        <label class="form-lbl">GitHub Personal Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <label class="form-lbl">Access Token <span style="color:var(--muted);font-weight:400">(optional)</span></label>
         <div style="position:relative">
-          <input type="password" id="s-pat" placeholder="ghp_..." style="padding-right:38px">
+          <input type="password" id="s-pat" placeholder="Your access token" style="padding-right:38px">
           <button type="button" onclick="toggleReveal('s-pat',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px">👁</button>
         </div>
         <div class="form-hint">Only needed for the "Refresh Data" button. Requires <strong>workflow</strong> scope.</div>
@@ -653,8 +656,9 @@
           <div class="form-grp">
             <label class="form-lbl">Role</label>
             <select id="new-user-role" style="width:100%;padding:8px 12px;border:1.5px solid #D8DEE9;border-radius:8px;font-size:13px;font-family:inherit">
-              <option value="viewer">Viewer — can generate reports</option>
-              <option value="admin">Admin — can generate reports + manage users/settings</option>
+              <option value="account_administrator">Account Administrator — generate reports</option>
+              <option value="account_manager">Account Manager — generate reports + edit clients</option>
+              <option value="system_administrator">System Administrator — full access</option>
             </select>
           </div>
           <div id="add-user-msg" style="display:none;font-size:12px;margin-bottom:10px"></div>
@@ -675,8 +679,9 @@
           <div class="form-grp">
             <label class="form-lbl">Role</label>
             <select id="edit-user-role" style="width:100%;padding:8px 12px;border:1.5px solid #D8DEE9;border-radius:8px;font-size:13px;font-family:inherit">
-              <option value="viewer">Viewer</option>
-              <option value="admin">Admin</option>
+              <option value="account_administrator">Account Administrator</option>
+              <option value="account_manager">Account Manager</option>
+              <option value="system_administrator">System Administrator</option>
             </select>
           </div>
           <div id="edit-user-msg" style="display:none;font-size:12px;margin-bottom:10px"></div>
@@ -978,7 +983,7 @@
           </div>
         </div>
         <div style="text-align:center;padding:10px 0 4px;font-size:13px;font-weight:600;color:var(--navy)" id="prog-lbl">Fetching data…</div>
-        <div style="text-align:center;font-size:12px;color:var(--muted)" id="prog-sub">Loading CSV files from GitHub</div>
+        <div style="text-align:center;font-size:12px;color:var(--muted)" id="prog-sub">Loading data files…</div>
       </div>
 
       <div id="done-area" style="display:none">
@@ -1031,6 +1036,8 @@
       </div>
     </div>
   </div><!-- /tab-config -->
+
+
 
   <!-- ── CLIENT EDIT MODAL ── -->
   <div class="overlay" id="client-edit-overlay">
@@ -1093,7 +1100,7 @@
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
-<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.05</div>
+<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.07</div>
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
@@ -1156,6 +1163,39 @@ function checkRecoveryToken() {
 }
 
 // ── Sign In ──
+const ROLE_DISPLAY = {
+  system_administrator: { label: 'System Administrator', bg: '#1E2E3D', color: '#FFFFFF' },
+  account_manager:      { label: 'Account Manager',      bg: '#3872B8', color: '#FFFFFF' },
+  account_administrator:{ label: 'Account Administrator',bg: '#E8ECF5', color: '#5A6B7B' },
+};
+
+function applyUserDisplay(displayName, role) {
+  const wrap  = document.getElementById('welcome-wrap');
+  const nameEl= document.getElementById('welcome-name');
+  const roleEl= document.getElementById('welcome-role');
+  if (!wrap) return;
+  wrap.style.display = 'flex';
+  if (nameEl) nameEl.textContent = displayName || '';
+  if (roleEl) {
+    const rd = ROLE_DISPLAY[role] || ROLE_DISPLAY['account_administrator'];
+    roleEl.textContent = rd.label;
+    roleEl.style.background = rd.bg;
+    roleEl.style.color = rd.color;
+  }
+  // Persist role on window for permission checks
+  window._userRole = role;
+  // Show/hide role-gated controls
+  const addClientBtn = document.querySelector('[onclick="openAddClient()"]');
+  if (addClientBtn) addClientBtn.style.display = canAdminClients() ? '' : 'none';
+  const settingsBtn = document.querySelector('[onclick="openSettings()"]');
+  if (settingsBtn) settingsBtn.style.opacity = canSeeSettings() ? '1' : '0.4';
+}
+
+// Permission helpers
+function canEditClients()  { return ['account_manager','system_administrator'].includes(window._userRole); }
+function canAdminClients() { return window._userRole === 'system_administrator'; }
+function canSeeSettings()  { return window._userRole === 'system_administrator'; }
+
 async function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -1173,10 +1213,9 @@ async function doLogin() {
     const displayName = meta.display_name || data.user?.email?.split('@')[0] || '';
     const role = meta.role || 'viewer';
     window._userRole = role; window._userEmail = data.user?.email;
-    const wm = document.getElementById('welcome-msg');
-    if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+    applyUserDisplay(displayName, role);
     const adminTab = document.getElementById('stab-admin');
-    if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+    if (adminTab) adminTab.style.display = role === 'system_administrator' ? '' : 'none';
     onLoginSuccess(data.user);
     document.getElementById('auth-overlay').style.display = 'none';
     document.getElementById('main-app').style.display = '';
@@ -1190,8 +1229,8 @@ async function doLogin() {
 async function doSignOut() {
   await getSupabase().auth.signOut();
   window._userRole = null; window._userEmail = null;
-  const wm = document.getElementById('welcome-msg');
-  if (wm) { wm.textContent = ''; wm.style.display = 'none'; }
+  const wrap = document.getElementById('welcome-wrap');
+  if (wrap) wrap.style.display = 'none';
   document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-btn').disabled   = false;
@@ -1278,7 +1317,7 @@ async function loadUsers() {
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-size:13px;font-weight:600;color:var(--text)">${name || u.email}</div>
-            <span class="role-badge role-${role}">${role}</span>
+            <span class="role-badge role-badge-${role}">${role}</span>
           </div>
           ${name ? `<div style="font-size:11px;color:var(--muted)">${u.email}</div>` : ''}
           <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Never'}</div>
@@ -1406,10 +1445,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const displayName = meta.display_name || session.user.email?.split('@')[0] || '';
         const role = meta.role || 'viewer';
         window._userRole = role; window._userEmail = session.user.email;
-        const wm = document.getElementById('welcome-msg');
-        if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+        applyUserDisplay(displayName, role);
         const adminTab = document.getElementById('stab-admin');
-        if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+        if (adminTab) adminTab.style.display = role === 'system_administrator' ? '' : 'none';
         onLoginSuccess(session.user);
         document.getElementById('auth-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = '';
@@ -1481,6 +1519,7 @@ const DEFAULTS = {
 };
 function getSettings() { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('cs-settings') || '{}') }; }
 function openSettings() {
+  if (!canSeeSettings()) { toast('Settings access requires System Administrator role.', 'error'); return; }
   const s = getSettings();
   document.getElementById('s-owner').value         = s.owner;
   document.getElementById('s-repo').value          = s.repo;
@@ -1516,14 +1555,14 @@ async function fetchCSV(path) {
   const headers = { 'Accept': 'application/vnd.github.v3.raw' };
   if (pat) headers['Authorization'] = `Bearer ${pat}`;
   const res = await fetch(url, { headers });
-  if (res.status === 401) throw new Error(`Authentication failed. Add a GitHub PAT in Settings.`);
+  if (res.status === 401) throw new Error(`Authentication failed. Check your Access Token in Settings.`);
   if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}.`);
   if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}).`);
   return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
 }
 async function triggerRefresh() {
   const { owner, repo, pat } = getSettings();
-  if (!pat) { toast('Add a GitHub PAT in Settings to use Refresh Data', 'error'); return; }
+  if (!pat) { toast('Add an Access Token in Settings to use Refresh Data', 'error'); return; }
   const btn = document.getElementById('refresh-btn');
   btn.textContent = '\u27F3 Syncing\u2026'; btn.disabled = true;
   try {
@@ -1531,7 +1570,7 @@ async function triggerRefresh() {
       method:'POST', headers:{'Authorization':`Bearer ${pat}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
       body: JSON.stringify({ ref:'main' })
     });
-    (res.ok||res.status===204) ? toast('Sync triggered \u2014 data will refresh in ~2 min','success') : toast('Sync failed. Check your PAT in Settings.','error');
+    (res.ok||res.status===204) ? toast('Sync triggered \u2014 data will refresh in ~2 min','success') : toast('Sync failed. Check your Access Token in Settings.','error');
   } catch(e) { toast('Network error \u2014 could not trigger sync','error'); }
   finally { btn.textContent = '\u21BB Refresh Data'; btn.disabled = false; }
 }
@@ -1984,7 +2023,7 @@ async function loadAndRenderConfig() {
   wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading clients.json…</div>';
   const ok = await loadClientsFromConfig();
   if (!ok) {
-    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">Could not load clients.json — check your PAT and repo name in Settings.</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">Could not load clients.json — check your Access Token and repository settings.</div>';
     return;
   }
   renderConfigTable();
@@ -2015,7 +2054,7 @@ function renderConfigTable(filter='') {
       <td style="font-size:11px;color:var(--muted)">${c.go_live_date||'—'}</td>
       <td><span class="active-badge ${c.active!==false?'on':'off'}">${c.active!==false?'Active':'Inactive'}</span></td>
       <td>
-        <button class="btn-sm-ghost" onclick="openEditClient(${_allClientsData.indexOf(c)})">Edit</button>
+        ${canEditClients() ? `<button class="btn-sm-ghost" onclick="openEditClient(${_allClientsData.indexOf(c)})">Edit</button>` : ''}
       </td>
     </tr>`).join('');
 
@@ -2066,7 +2105,7 @@ function openEditClient(idx) {
   document.getElementById('ce-program-start').value = c.program_start_date || '';
   document.getElementById('ce-go-live').value = c.go_live_date || '';
   document.getElementById('ce-active').checked = c.active !== false;
-  document.getElementById('ce-delete-btn').style.display = '';
+  document.getElementById('ce-delete-btn').style.display = canAdminClients() ? '' : 'none';
   document.getElementById('ce-save-btn').textContent = 'Save Changes';
   document.getElementById('ce-msg').style.display = 'none';
   document.getElementById('client-edit-overlay').classList.add('open');
@@ -4170,6 +4209,7 @@ ${(wins.length || issues.length || topNC.length) ? `
 </div>
 </body></html>`;
 }
+
 
 function normStatus(s) {
   if (!s) return 'unknown';
