@@ -109,6 +109,13 @@
     .role-badge { display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:10px; }
     .role-admin  { background:#EBF2FB;color:#3872B8; }
     .role-viewer { background:#EEF1F8;color:#5A6B7B; }
+    html.dark .role-admin  { background:#1A2A3D;color:#6BA3DE; }
+    html.dark .role-viewer { background:#1E2D3D;color:#7A8FA0; }
+    .btn-sm-ghost { font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--white);cursor:pointer;color:var(--navy);font-family:inherit; }
+    .btn-sm-ghost:hover { background:var(--bg); }
+    .btn-sm-danger { font-size:11px;padding:4px 10px;border:1px solid var(--red);border-radius:5px;background:var(--red-bg);cursor:pointer;color:var(--red);font-family:inherit; }
+    .btn-sm-danger:hover { opacity:0.85; }
+    html.dark .btn-sm-ghost { background:var(--bg); }
     .stab { background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;font-family:inherit; }
     .stab.active { color:var(--blue);border-bottom-color:var(--blue); }
     .stab:hover:not(.active) { color:var(--navy); }
@@ -407,7 +414,7 @@
     /* ── Settings modal ── */
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
     .overlay.open { display: flex; }
-    .modal { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 510px; padding: 26px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+    .modal { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 580px; padding: 26px; box-shadow: var(--shadow-lg); max-height: 92vh; overflow-y: auto; scrollbar-width: thin; }
     .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .modal-title { font-size: 17px; font-weight: 700; color: var(--navy); }
     .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--muted); line-height: 1; padding: 2px; }
@@ -940,7 +947,7 @@ let _supabase = null;
 function getSupabase() {
   if (!_supabase) {
     _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true }
+      auth: { persistSession: true, storage: window.sessionStorage, autoRefreshToken: true, detectSessionInUrl: true }
     });
   }
   return _supabase;
@@ -1163,11 +1170,11 @@ async function loadUsers() {
         </div>
         <div style="display:flex;gap:6px">
           <button onclick="showEditUser('${u.id}','${(name||'').replace(/'/g,"\\'")}','${role}')"
-            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Edit</button>
+            class="btn-sm-ghost">Edit</button>
           <button onclick="doResetUserPassword('${u.id}','${u.email}')"
-            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:white;cursor:pointer;color:var(--navy)">Reset PW</button>
+            class="btn-sm-ghost">Reset PW</button>
           <button onclick="doDeleteUser('${u.id}','${u.email}')"
-            style="font-size:11px;padding:4px 10px;border:1px solid #F5CFC9;border-radius:5px;background:#FDF0EE;cursor:pointer;color:#C0392B">Remove</button>
+            class="btn-sm-danger">Remove</button>
         </div>
       </div>`;
     }).join('');
@@ -3118,10 +3125,29 @@ function toast(msg, type='') {
 // ──────────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initDark();
   renderGrids();
-  // Show footer after login
+  // Check if there's already a valid session (e.g. after browser refresh)
+  if (!checkRecoveryToken()) {
+    try {
+      const { data: { session } } = await getSupabase().auth.getSession();
+      if (session?.user) {
+        const meta = session.user.user_metadata || {};
+        const displayName = meta.display_name || session.user.email?.split('@')[0] || '';
+        const role = meta.role || 'viewer';
+        window._userRole = role;
+        window._userEmail = session.user.email;
+        const wm = document.getElementById('welcome-msg');
+        if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+        const adminTab = document.getElementById('stab-admin');
+        if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+        onLoginSuccess(session.user);
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = '';
+      }
+    } catch(e) { /* no session, show login */ }
+  }
 });
 
 function onLoginSuccess(user) {
