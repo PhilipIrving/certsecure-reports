@@ -66,8 +66,6 @@
     html.dark select, html.dark input[type="text"], html.dark input[type="date"] { background: #0F1620; color: var(--text); border-color: var(--border); }
     html.dark .modal       { background: #1A2332; }
     html.dark .report-card { background: var(--white); }
-    html.dark .rc-sidebar-item { background: var(--bg); }
-    html.dark .rc-sidebar-item.active { background: var(--blue-light); }
     html.dark .notif-drawer { background: #1A2332; border-color: var(--border); }
 
     /* ── Login overlay ── */
@@ -260,20 +258,9 @@
     .banner-change:hover { text-decoration: underline; }
 
     /* ── Report cards ── */
-    /* Sidebar report layout */
-    .report-layout { display: grid; grid-template-columns: 200px 1fr; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: 1; min-height: 0; }
-    .rc-sidebar { background: var(--bg); border-right: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-    .rc-sidebar-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.14s; }
-    .rc-sidebar-item:hover { background: var(--border); }
-    .rc-sidebar-item.active { background: var(--blue-light); }
-    .rc-sidebar-item.selected { border: 2px solid var(--blue); }
-    .rc-sidebar-item.active.selected { background: var(--blue-light); }
-    .rcs-title { font-size: 13px; font-weight: 600; color: var(--navy); }
-    .rcs-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .rcs-row   { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
-    .rc-panel  { flex: 1; overflow: hidden; padding: 16px 18px; }
-    .rc-panel-hdr { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-    .rc-panel-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    /* Report grid */
+    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 680px) { .report-grid { grid-template-columns: 1fr; } }
     /* Search */
     .search-wrap { position: relative; margin-bottom: 14px; flex-shrink: 0; }
     .search-input { width: 100%; box-sizing: border-box; padding: 9px 14px 9px 32px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s; }
@@ -754,11 +741,18 @@
       </div>
     </div>
 
-    <div class="report-layout">
-      <div class="rc-sidebar">
+    <div class="card" style="flex:1;min-height:0;overflow:hidden">
+      <div class="card-title">Select Reports to Generate</div>
+      <div class="report-grid">
 
         <!-- Compliance Summary PDF -->
-        <div id="rc-body-cs" style="display:none">
+        <div class="report-card" id="rc-cs">
+          <div class="report-card-hdr" onclick="toggleReport('cs')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Compliance Summary</div><div class="rc-sub">Executive compliance overview</div></div>
+            <span class="rc-type type-pdf">PDF</span>
+          </div>
+          <div class="report-card-body">
             <div class="sec-div">Sections to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="cs-kpi" checked> Program KPI Cards (Active, Compliant, Non-Compliant, New)</label>
@@ -774,7 +768,13 @@
         </div>
 
         <!-- Compliance Detail Excel -->
-        <div id="rc-body-cd" style="display:none">
+        <div class="report-card" id="rc-cd">
+          <div class="report-card-hdr" onclick="toggleReport('cd')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Compliance Detail</div><div class="rc-sub">Full entity-level compliance data</div></div>
+            <span class="rc-type type-excel">Excel</span>
+          </div>
+          <div class="report-card-body">
             <div class="sec-div">Sheets to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="cd-summary" checked> Summary</label>
@@ -796,7 +796,13 @@
         </div>
 
         <!-- Engagement Summary PDF -->
-        <div id="rc-body-es" style="display:none">
+        <div class="report-card" id="rc-es">
+          <div class="report-card-hdr" onclick="toggleReport('es')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Engagement Summary</div><div class="rc-sub">Email engagement overview</div></div>
+            <span class="rc-type type-pdf">PDF</span>
+          </div>
+          <div class="report-card-body">
             <div class="sec-div">Sections to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="es-kpi" checked> Email KPI Cards (Sent, Opened, Clicked, Issues)</label>
@@ -811,7 +817,13 @@
         </div>
 
         <!-- Engagement Detail Excel -->
-        <div id="rc-body-ed" style="display:none">
+        <div class="report-card" id="rc-ed">
+          <div class="report-card-hdr" onclick="toggleReport('ed')">
+            <div class="rc-dot"></div>
+            <div><div class="rc-title">Engagement Detail</div><div class="rc-sub">Full engagement data</div></div>
+            <span class="rc-type type-excel">Excel</span>
+          </div>
+          <div class="report-card-body">
             <div class="sec-div">Sheets to Include</div>
             <div class="cb-group">
               <label class="cb-item"><input type="checkbox" id="ed-summary" checked> Summary</label>
@@ -831,42 +843,38 @@
           </div>
         </div>
 
-      </div><!-- /rc-sidebar -->
-      <div class="rc-panel" id="rc-panel-content">
-        <div style="color:var(--muted);font-size:13px;padding:20px 0">Select a report type from the left to configure it.</div>
-      </div>
+      </div><!-- /report-grid -->
+    </div>
 
-      <!-- Global filters -->
-      <div style="margin-top:20px">
-        <div class="sec-div">Global Filters</div>
-        <div class="filter-row">
-          <div class="filter-grp">
-            <div class="filter-lbl">Expiring Within</div>
-            <select id="g-expiring">
-              <option value="">No filter</option>
-              <option value="7">7 days</option>
-              <option value="30">30 days</option>
-              <option value="60">60 days</option>
-              <option value="90">90 days</option>
-            </select>
-          </div>
-          <div class="filter-grp">
-            <div class="filter-lbl">Report Date</div>
-            <input type="date" id="g-date">
-          </div>
+    <div style="margin-top:14px;flex-shrink:0">
+      <div class="sec-div">Global Filters</div>
+      <div class="filter-row">
+        <div class="filter-grp">
+          <div class="filter-lbl">Expiring Within</div>
+          <select id="g-expiring">
+            <option value="">No filter</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+        <div class="filter-grp">
+          <div class="filter-lbl">Report Date</div>
+          <input type="date" id="g-date">
         </div>
       </div>
+    </div>
 
-      <div class="action-bar">
-        <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-primary" id="gen-btn" onclick="generate()" disabled>
-          ⬇ Generate Reports
-        </button>
-      </div>
+    <div class="action-bar" style="flex-shrink:0">
+      <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" id="gen-btn" onclick="generate()" disabled>
+        ⬇ Generate Reports
+      </button>
     </div>
   </div>
 
-  <!-- ── STEP 3: GENERATING / DONE ── -->
+    <!-- ── STEP 3: GENERATING / DONE ── -->
   <div id="step-3" class="step-panel" style="display:none;flex:1;min-height:0">
     <div class="page-hdr">
       <div class="page-title" id="s3-title">Generating Reports…</div>
@@ -1539,7 +1547,11 @@ function pickClient(key) {
   updateCustomFieldsUI();
   _selectedReports.clear();
   _activePanel = null;
-  setTimeout(() => goTo(2), 80);
+  ['cs','cd','es','ed'].forEach(function(id) {
+    var c = document.getElementById('rc-' + id);
+    if (c) c.classList.remove('on');
+  });
+  setTimeout(function() { goTo(2); }, 80);
 }
 
 function updateLastReportBadges() {
@@ -1601,7 +1613,6 @@ function goTo(n) {
     document.getElementById('cd-entity-lbl').textContent = s.groupLabel ? s.groupLabel + ' List' : 'Entity List';
     if (!document.getElementById('g-date').value)
       document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
-    renderSidebar();
     updateGenBtn();
   }
 }
@@ -1673,8 +1684,14 @@ function renderPanel(id) {
 }
 
 function toggleReport(id) {
-  if (_selectedReports.has(id)) _selectedReports.delete(id); else _selectedReports.add(id);
-  renderSidebar();
+  const card = document.getElementById('rc-' + id);
+  if (_selectedReports.has(id)) {
+    _selectedReports.delete(id);
+    if (card) card.classList.remove('on');
+  } else {
+    _selectedReports.add(id);
+    if (card) card.classList.add('on');
+  }
   updateGenBtn();
 }
 
