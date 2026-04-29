@@ -168,7 +168,7 @@
     .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Main ── */
-    .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; height: calc(100vh - 64px - 36px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 0; height: calc(100vh - 64px); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
     .step-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .step-panel.fading { animation: stepFade 0.2s ease; }
     @keyframes stepFade { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
@@ -297,8 +297,6 @@
     .prog-step.active .prog-step-lbl { color: var(--blue); font-weight: 600; }
     .prog-step.done   .prog-step-lbl { color: var(--green); font-weight: 600; }
     /* Footer */
-    .app-footer { height: 36px; background: var(--white); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 11px; color: var(--muted); flex-shrink: 0; }
-    .app-footer a { color: var(--muted); text-decoration: none; }
     @media (max-width: 680px) { .report-grid { grid-template-columns: 1fr; } }
     .report-card { border: 2px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
     .report-card.on { border-color: var(--blue); }
@@ -926,15 +924,9 @@
 </main>
 
 <div class="toast" id="toast"></div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.75</div>
 </div><!-- end main-app -->
-<footer class="app-footer" id="app-footer" style="display:none">
-  <span>🔒 HUB CertSecure — Confidential. Internal use only.</span>
-  <span style="color:var(--border)">|</span>
-  <span>Report Generator</span>
-  <span style="margin-left:auto;display:flex;align-items:center;gap:16px">
-    <span style="font-weight:600;color:var(--blue)">v0.75</span>
-  </span>
-</footer>
+
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
 <script>
@@ -3130,6 +3122,9 @@ function toast(msg, type='') {
 document.addEventListener('DOMContentLoaded', async () => {
   initDark();
   renderGrids();
+  // Ensure only step-1 is visible on load
+  [2,3].forEach(i => { const el=document.getElementById(`step-${i}`); if(el) el.style.display='none'; });
+  const s1 = document.getElementById('step-1'); if(s1) s1.style.display='';
   // Check if there's already a valid session (e.g. after browser refresh)
   if (!checkRecoveryToken()) {
     try {
@@ -3154,8 +3149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function onLoginSuccess(user) {
   // Show footer, set user
-  const footer = document.getElementById('app-footer');
-  if (footer) footer.style.display = '';
 
 }
 </script>
