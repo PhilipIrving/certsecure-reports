@@ -703,7 +703,7 @@
       <button class="modal-close" onclick="closeHubWide()">✕</button>
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.5">
-      Generates a full annual review across all clients. Runs via GitHub Actions (~2–4 min) and appears in Recent Activity when ready.
+      Generates a full annual review across all clients using snapshot data. Runs entirely in the browser — no waiting.
     </div>
     <div class="form-grp">
       <label class="form-lbl">Report Year</label>
@@ -713,7 +713,7 @@
     <div id="hw-msg" style="display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:10px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn btn-secondary" onclick="closeHubWide()">Cancel</button>
-      <button class="btn btn-primary" id="hw-btn" onclick="triggerHubWide()">🚀 Generate</button>
+      <button class="btn btn-primary" id="hw-btn" onclick="triggerHubWide()">⬇ Generate</button>
     </div>
   </div>
 </div>
@@ -1564,29 +1564,164 @@ function closeHubWide() {
   document.getElementById('hw-msg').style.display = 'none';
 }
 async function triggerHubWide() {
-  const year = document.getElementById('hw-year').value.trim();
+  const year = document.getElementById('hw-year').value.trim() || String(new Date().getFullYear());
   const btn  = document.getElementById('hw-btn');
   const msg  = document.getElementById('hw-msg');
-  btn.disabled = true; btn.textContent = 'Queuing\u2026';
+  btn.disabled = true; btn.textContent = 'Generating\u2026';
   msg.style.display = 'none';
 
-  const inputs = {
-    client: 'A G Equipment Company', // required by workflow but ignored for hub_wide_annual
-    hub_wide_annual: 'true',
-    report_year: year,
-  };
-  const year_str  = year || String(new Date().getFullYear());
-  const filename  = `HUB-Wide - Annual Review ${year_str}.pdf`;
-  const label     = `HUB-Wide Annual Review ${year_str}`;
+  try {
+    setProgress('Building HUB-Wide Annual Review\u2026', `Fetching snapshots for ${year}`, 1);
 
-  await triggerActionReport(inputs, filename, label);
+    // Loop all clients and collect snapshot data
+    const allClients = CLIENTS.map(c => c.key);
+    const clientSections = [];
 
-  msg.textContent = `\u2713 Queued! File will appear in Recent Activity when ready (~3 min).`;
-  msg.style.cssText = 'display:block;font-size:12px;padding:8px 12px;border-radius:7px;background:var(--green-bg);color:var(--green);margin-top:10px';
+    for (let i = 0; i < allClients.length; i++) {
+      const clientKey = allClients[i];
+      btn.textContent = `Building\u2026 ${i+1}/${allClients.length}`;
+      try {
+        const insureds  = (await fetchSnapshotCSV(year, null, 'insureds.csv')).filter(r => r[C.client] === clientKey);
+        const active    = insureds.filter(r => r[C.active] !== 'false' && r[C.paused] !== 'true');
+        if (!active.length) continue;
+        const comp = active.filter(r => normStatus(r[C.status]) === 'compliant').length;
+        const nc   = active.filter(r => normStatus(r[C.status]) === 'non_compliant').length;
+        const newp = active.length - comp - nc;
+        let topNC = [];
+        try {
+          const criteria = (await fetchSnapshotCSV(year, null, 'criteria.csv')).filter(r => r[C.client] === clientKey);
+          const ncMap = {};
+          criteria.filter(r => normStatus(r[C.overall_comp]) === 'non_compliant').forEach(r => {
+            (r[C.nc_reasons]||'').split(' | ').forEach(p => {
+              const ci = p.indexOf(':'); if (ci < 0) return;
+              const reason = p.slice(ci+1).trim(); if (!reason) return;
+              ncMap[reason] = (ncMap[reason]||0) + 1;
+            });
+          });
+          topNC = Object.entries(ncMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        } catch(e) {}
+        clientSections.push({ name: clientKey, active: active.length, comp, nc, newp, topNC });
+      } catch(e) { /* skip missing client */ }
+    }
+
+    if (!clientSections.length) throw new Error(`No snapshot data found for ${year}. Check that snapshots/${year}/ exists in the repo.`);
+
+    const html = buildHubWideHTML(year, clientSections);
+    const blob = new Blob([html], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    const filename = `HUB-Wide Annual Review ${year}.pdf`;
+    const label    = `HUB-Wide Annual Review ${year}`;
+
+    // Add to notification drawer
+    _notifs.unshift({ msg: label, type: 'success', time: new Date(), _download: { type: 'pdf', _blobUrl: blobUrl, filename } });
+    if (_notifs.length > 15) _notifs.pop();
+    renderNotifList();
+    const drawer = document.getElementById('notif-drawer');
+    if (drawer) { drawer.style.display = ''; _unread = 0; updateNotifBadge(); }
+
+    msg.textContent = '\u2713 Done! Open from Recent Activity.';
+    msg.style.cssText = 'display:block;font-size:12px;padding:8px 12px;border-radius:7px;background:var(--green-bg);color:var(--green);margin-top:10px';
+    setTimeout(() => closeHubWide(), 2000);
+  } catch(e) {
+    msg.textContent = 'Failed: ' + e.message;
+    msg.style.cssText = 'display:block;font-size:12px;padding:8px 12px;border-radius:7px;background:var(--red-bg);color:var(--red);margin-top:10px';
+  }
   btn.textContent = 'Generate';
   btn.disabled = false;
-  setTimeout(() => closeHubWide(), 2000);
 }
+
+function buildHubWideHTML(year, sections) {
+  const logoSrc = (document.querySelector('.header-logo')?.src?.startsWith('data:')) ? document.querySelector('.header-logo').src : null;
+  const logoTag = logoSrc ? `<img src="${logoSrc}" style="height:36px;object-fit:contain">` :
+    `<div style="font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:#1E2E3D">CERT<span style="background:#3872B8;color:white;padding:1px 7px;border-radius:3px">SECURE</span></div>`;
+  const totalActive = sections.reduce((s,c) => s+c.active, 0);
+  const totalComp   = sections.reduce((s,c) => s+c.comp,   0);
+  const totalNC     = sections.reduce((s,c) => s+c.nc,     0);
+  const totalNew    = sections.reduce((s,c) => s+c.newp,   0);
+  const stamp = new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+
+  const clientRows = sections.map((c,i) => {
+    const rate = c.active ? Math.round(c.comp/c.active*100) : 0;
+    const rateColor = rate >= 80 ? '#16A34A' : rate >= 60 ? '#D97706' : '#DC2626';
+    return `<tr style="background:${i%2===0?'#FAFBFC':'white'}">
+      <td style="font-weight:600;font-size:11px">${esc(c.name)}</td>
+      <td style="text-align:center">${c.active}</td>
+      <td style="text-align:center;color:#16A34A;font-weight:600">${c.comp}</td>
+      <td style="text-align:center;color:#DC2626;font-weight:600">${c.nc}</td>
+      <td style="text-align:center;color:#D97706;font-weight:600">${c.newp}</td>
+      <td style="text-align:center;font-weight:700;color:${rateColor}">${rate}%</td>
+      <td style="font-size:9px;color:#5A6B7B">${c.topNC.map(([r])=>r.length>40?r.slice(0,40)+'…':r).join(' · ') || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>HUB-Wide Annual Review ${year}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',Arial,sans-serif;background:white;color:#1E2E3D;width:960px;padding:28px 32px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid #1E2E3D}
+.badge-pill{display:inline-block;background:#EEF1F8;color:#1E2E3D;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:6px}
+.title{font-size:24px;font-weight:800;color:#1E2E3D}
+.year{font-size:40px;font-weight:900;color:#3872B8;line-height:1}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.kpi{border-radius:8px;padding:14px}
+.kpi.grey{background:#EEF1F8}.kpi.green{background:#E6F5EF}.kpi.red{background:#FDF0EE}.kpi.amber{background:#FFF8E6}
+.kpi-lbl{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.kpi.grey .kpi-lbl{color:#5A6B7B}.kpi.green .kpi-lbl{color:#15803D}.kpi.red .kpi-lbl{color:#B91C1C}.kpi.amber .kpi-lbl{color:#B45309}
+.kpi-val{font-size:28px;font-weight:700;line-height:1}
+.kpi.grey .kpi-val{color:#1E2E3D}.kpi.green .kpi-val{color:#16A34A}.kpi.red .kpi-val{color:#DC2626}.kpi.amber .kpi-val{color:#D97706}
+.kpi-pct{font-size:11px;font-weight:600;margin-top:3px}
+.kpi.green .kpi-pct{color:#16A34A}.kpi.red .kpi-pct{color:#DC2626}.kpi.amber .kpi-pct{color:#D97706}
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:18px 0 11px}
+.sec-line{flex:1;height:2px;background:#E8ECF5}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1E2E3D;white-space:nowrap;border-left:3px solid #3872B8;padding-left:7px}
+table{width:100%;border-collapse:collapse}
+th{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:white;background:#2B3A52;padding:8px 10px;text-align:left}
+th:not(:first-child){text-align:center}
+td{padding:7px 10px;border-bottom:1px solid #F0F2F6;font-size:11px;vertical-align:top}
+.footer{margin-top:20px;padding-top:10px;border-top:1px solid #E8ECF5;display:grid;grid-template-columns:1fr auto;gap:12px;font-size:8.5px;color:#B0B8C8;line-height:1.4}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A3 landscape;margin:8mm}}
+</style></head><body>
+<div class="hdr">
+  <div>${logoTag}</div>
+  <div style="text-align:right">
+    <div class="badge-pill">Internal Use Only</div>
+    <div class="title">HUB-Wide Annual Review</div>
+    <div class="year">${year}</div>
+    <div style="font-size:11px;color:#5A6B7B;margin-top:4px">Generated: ${stamp}</div>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi grey"><div class="kpi-lbl">Total Active Entities</div><div class="kpi-val">${totalActive}</div><div class="kpi-pct" style="color:#3872B8">${sections.length} clients</div></div>
+  <div class="kpi green"><div class="kpi-lbl">Compliant</div><div class="kpi-val">${totalComp}</div><div class="kpi-pct">${pct(totalComp,totalActive)} of active</div></div>
+  <div class="kpi red"><div class="kpi-lbl">Non-Compliant</div><div class="kpi-val">${totalNC}</div><div class="kpi-pct">${pct(totalNC,totalActive)} of active</div></div>
+  <div class="kpi amber"><div class="kpi-lbl">Pending / New</div><div class="kpi-val">${totalNew}</div><div class="kpi-pct">${pct(totalNew,totalActive)} of active</div></div>
+</div>
+
+<div class="sec-hdr"><div class="sec-lbl">Client-by-Client Breakdown</div><div class="sec-line"></div></div>
+<table>
+  <thead><tr>
+    <th style="width:28%">Client</th>
+    <th>Active</th>
+    <th>Compliant</th>
+    <th>Non-Compliant</th>
+    <th>Pending</th>
+    <th>Rate</th>
+    <th style="width:30%;text-align:left">Top NC Reasons</th>
+  </tr></thead>
+  <tbody>${clientRows}</tbody>
+</table>
+
+<div class="footer">
+  <div>🔒 <strong>Confidential — HUB CertSecure.</strong> HUB-Wide Annual Review · ${year} · Internal use only. Do not distribute outside HUB International.</div>
+  <div style="text-align:right;white-space:nowrap">HUB CertSecure · HUB-Wide Annual Review · ${year}</div>
+</div>
+</body></html>`;
+}
+
+
 
 
 
