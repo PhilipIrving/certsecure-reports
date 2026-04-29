@@ -923,7 +923,7 @@
 </main>
 
 <div class="toast" id="toast"></div>
-<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.75</div>
+<div id="version-badge" style="display:none;position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);z-index:50;pointer-events:none;letter-spacing:.04em">v0.01</div>
 </div><!-- end main-app -->
 
 
@@ -931,8 +931,320 @@
 <script>
 
 // ──────────────────────────────────────────────
-// DARK MODE
+// SUPABASE AUTH
 // ──────────────────────────────────────────────
+const SUPABASE_URL = 'https://nwcyavfkmbhcadtrvyqy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qpgDwAfvcOQIixrV3uPK-w_HWwIg36o';
+let _supabase = null;
+
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, storage: window.sessionStorage, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+  }
+  return _supabase;
+}
+
+function getEdgeUrl() {
+  return localStorage.getItem('cs-edge-url') || `${SUPABASE_URL}/functions/v1/manage-users`;
+}
+
+async function callEdge(action, payload={}) {
+  const { data:{ session } } = await getSupabase().auth.getSession();
+  const token = session?.access_token;
+  const res = await fetch(getEdgeUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || SUPABASE_KEY}` },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
+}
+
+// ── View switching ──
+function showView(name) {
+  ['signin','forgot','reset'].forEach(v => {
+    document.getElementById(`view-${v}`).style.display = v === name ? '' : 'none';
+  });
+}
+
+// ── Check for password recovery token ──
+function checkRecoveryToken() {
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery') || hash.includes('type=signup')) {
+    getSupabase().auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        document.getElementById('auth-overlay').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+        showView('reset');
+      }
+    });
+    return true;
+  }
+  return false;
+}
+
+// ── Sign In ──
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+  const errEl    = document.getElementById('signin-err');
+  if (!email || !password) { showAuthMsg('signin-err', 'Please enter your email and password.', true); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…'; errEl.style.display = 'none';
+  try {
+    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
+    if (error) {
+      showAuthMsg('signin-err', error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message, true);
+      btn.disabled = false; btn.textContent = 'Sign In'; return;
+    }
+    const meta = data.user?.user_metadata || {};
+    const displayName = meta.display_name || data.user?.email?.split('@')[0] || '';
+    const role = meta.role || 'viewer';
+    window._userRole = role; window._userEmail = data.user?.email;
+    const wm = document.getElementById('welcome-msg');
+    if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+    const adminTab = document.getElementById('stab-admin');
+    if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+    onLoginSuccess(data.user);
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = '';
+  } catch(e) {
+    showAuthMsg('signin-err', 'Connection error. Please check your internet and try again.', true);
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+// ── Sign Out ──
+async function doSignOut() {
+  await getSupabase().auth.signOut();
+  window._userRole = null; window._userEmail = null;
+  const wm = document.getElementById('welcome-msg');
+  if (wm) { wm.textContent = ''; wm.style.display = 'none'; }
+  document.getElementById('login-email').value    = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-btn').disabled   = false;
+  document.getElementById('login-btn').textContent= 'Sign In';
+  document.getElementById('signin-err').style.display = 'none';
+  document.getElementById('main-app').style.display   = 'none';
+  document.getElementById('auth-overlay').style.display = 'flex';
+  showView('signin');
+}
+
+// ── Forgot Password ──
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const btn   = document.getElementById('forgot-btn');
+  if (!email) { showAuthMsg('forgot-msg', 'Please enter your email address.', true); return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0],
+  });
+  if (error) {
+    showAuthMsg('forgot-msg', error.message, true);
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
+  } else {
+    showAuthMsg('forgot-msg', `Reset link sent to ${email}. Check your inbox.`, false);
+    btn.textContent = 'Sent ✓';
+  }
+}
+
+// ── Reset Password ──
+async function doResetPassword() {
+  const pw  = document.getElementById('reset-password').value;
+  const pw2 = document.getElementById('reset-confirm').value;
+  const btn = document.getElementById('reset-btn');
+  if (!pw || pw.length < 8) { showAuthMsg('reset-msg', 'Password must be at least 8 characters.', true); return; }
+  if (pw !== pw2)            { showAuthMsg('reset-msg', 'Passwords do not match.', true); return; }
+  btn.disabled = true; btn.textContent = 'Updating…';
+  const { error } = await getSupabase().auth.updateUser({ password: pw });
+  if (error) {
+    showAuthMsg('reset-msg', error.message, true);
+    btn.disabled = false; btn.textContent = 'Set New Password';
+  } else {
+    showAuthMsg('reset-msg', 'Password updated! Signing you in…', false);
+    setTimeout(() => {
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('main-app').style.display = '';
+      window.location.hash = '';
+    }, 1500);
+  }
+}
+
+function showAuthMsg(id, msg, isErr) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = isErr ? 'login-err' : 'login-success';
+  el.style.display = 'block';
+}
+
+// ── Settings tabs ──
+function switchSettingsTab(tab) {
+  ['github','users','admin'].forEach(t => {
+    document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`stab-content-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'users') loadUsers();
+}
+
+// ── User management ──
+async function loadUsers() {
+  document.getElementById('users-need-key').style.display = 'none';
+  document.getElementById('users-panel').style.display    = '';
+  document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Loading users…</div>';
+  try {
+    const { users } = await callEdge('list');
+    if (!users?.length) {
+      document.getElementById('users-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No users yet.</div>';
+      return;
+    }
+    document.getElementById('users-list').innerHTML = users.map(u => {
+      const meta = u.raw_user_meta_data || u.user_metadata || {};
+      const name = meta.display_name || '';
+      const role = meta.role || 'viewer';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:8px;background:var(--bg)">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${name || u.email}</div>
+            <span class="role-badge role-${role}">${role}</span>
+          </div>
+          ${name ? `<div style="font-size:11px;color:var(--muted)">${u.email}</div>` : ''}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Last sign in: ${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Never'}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="showEditUser('${u.id}','${(name||'').replace(/'/g,"\\'")}','${role}')" class="btn-sm-ghost">Edit</button>
+          <button onclick="doResetUserPassword('${u.id}','${u.email}')" class="btn-sm-ghost">Reset PW</button>
+          <button onclick="doDeleteUser('${u.id}','${u.email}')" class="btn-sm-danger">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('users-list').innerHTML = `<div style="color:var(--muted);font-size:12px;padding:10px;background:var(--bg);border-radius:7px"><strong>Edge Function not set up yet.</strong><br>Go to Settings → Admin tab for setup instructions.<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px">Error detail</summary><div style="font-size:11px;color:var(--red);margin-top:4px">${e.message}</div></details></div>`;
+  }
+}
+
+async function doAddUser() {
+  const name  = document.getElementById('new-user-name').value.trim();
+  const email = document.getElementById('new-user-email').value.trim();
+  const pass  = document.getElementById('new-user-pass').value.trim();
+  const role  = document.getElementById('new-user-role').value;
+  const msgEl = document.getElementById('add-user-msg');
+  if (!email || !pass) { showUserMsg(msgEl,'Email and password are required.',true); return; }
+  if (pass.length < 8) { showUserMsg(msgEl,'Password must be at least 8 characters.',true); return; }
+  try {
+    await callEdge('create', { email, password: pass, metadata: { display_name: name, role } });
+    showUserMsg(msgEl, `${name||email} added successfully.`, false);
+    document.getElementById('new-user-name').value = '';
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-pass').value  = '';
+    setTimeout(() => { hideAddUser(); loadUsers(); }, 1200);
+  } catch(e) { showUserMsg(msgEl, e.message, true); }
+}
+
+function showEditUser(uid, name, role) {
+  document.getElementById('edit-user-id').value   = uid;
+  document.getElementById('edit-user-name').value = name;
+  document.getElementById('edit-user-role').value = role;
+  document.getElementById('edit-user-msg').style.display = 'none';
+  document.getElementById('edit-user-modal').style.display = '';
+  document.getElementById('add-user-form').style.display  = 'none';
+}
+function hideEditUser() { document.getElementById('edit-user-modal').style.display = 'none'; }
+
+async function doEditUser() {
+  const uid  = document.getElementById('edit-user-id').value;
+  const name = document.getElementById('edit-user-name').value.trim();
+  const role = document.getElementById('edit-user-role').value;
+  const msgEl= document.getElementById('edit-user-msg');
+  try {
+    await callEdge('updateMeta', { userId: uid, metadata: { display_name: name, role } });
+    showUserMsg(msgEl, 'Saved!', false);
+    setTimeout(() => { hideEditUser(); loadUsers(); }, 900);
+  } catch(e) { showUserMsg(msgEl, e.message, true); }
+}
+
+async function doDeleteUser(uid, email) {
+  if (!confirm(`Remove ${email}?\nThey will lose access immediately.`)) return;
+  try { await callEdge('delete', { userId: uid }); toast(`${email} removed`,'success'); loadUsers(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function doResetUserPassword(uid, email) {
+  const newPw = prompt(`Set a temporary password for ${email}:\n(At least 8 characters)`);
+  if (!newPw) return;
+  if (newPw.length < 8) { toast('Password must be at least 8 characters','error'); return; }
+  try { await callEdge('resetPassword', { userId: uid, password: newPw }); toast(`Password reset for ${email}`,'success'); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+function showUserMsg(el, msg, isErr) {
+  el.style.display = 'block'; el.style.color = isErr ? '#C0392B' : '#1A7F5A'; el.textContent = msg;
+}
+function showAddUser() { document.getElementById('add-user-form').style.display = ''; }
+function hideAddUser() {
+  document.getElementById('add-user-form').style.display = 'none';
+  document.getElementById('add-user-msg').style.display  = 'none';
+}
+function saveAdminKey() {
+  const url = document.getElementById('s-edge-url').value.trim();
+  if (url) localStorage.setItem('cs-edge-url', url); else localStorage.removeItem('cs-edge-url');
+  toast('Admin settings saved','success'); closeSettings();
+}
+function toggleReveal(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁'; }
+}
+function toggleCsvPaths() {
+  const el   = document.getElementById('csv-paths');
+  const icon = document.getElementById('csv-toggle-icon');
+  const open = el.style.display === '';
+  el.style.display = open ? 'none' : '';
+  icon.textContent = open ? '▼ show' : '▲ hide';
+}
+
+function onLoginSuccess(user) {
+  const vb = document.getElementById('version-badge');
+  if (vb) vb.style.display = '';
+}
+
+// ── Enter key + session restore ──
+document.addEventListener('DOMContentLoaded', async () => {
+  initDark();
+  renderGrids();
+  [2,3].forEach(i => { const el=document.getElementById(`step-${i}`); if(el) el.style.display='none'; });
+  const s1 = document.getElementById('step-1'); if(s1) s1.style.display='';
+  ['login-email','login-password'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+  });
+  document.getElementById('forgot-email')?.addEventListener('keydown', e => { if (e.key==='Enter') doForgotPassword(); });
+  ['reset-password','reset-confirm'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doResetPassword(); });
+  });
+  const eu = localStorage.getItem('cs-edge-url');
+  if (eu) { const el = document.getElementById('s-edge-url'); if(el) el.value = eu; }
+  if (!checkRecoveryToken()) {
+    try {
+      const { data: { session } } = await getSupabase().auth.getSession();
+      if (session?.user) {
+        const meta = session.user.user_metadata || {};
+        const displayName = meta.display_name || session.user.email?.split('@')[0] || '';
+        const role = meta.role || 'viewer';
+        window._userRole = role; window._userEmail = session.user.email;
+        const wm = document.getElementById('welcome-msg');
+        if (wm && displayName) { wm.textContent = `Welcome, ${displayName}`; wm.style.display = ''; }
+        const adminTab = document.getElementById('stab-admin');
+        if (adminTab) adminTab.style.display = role === 'admin' ? '' : 'none';
+        onLoginSuccess(session.user);
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = '';
+      }
+    } catch(e) { /* no session */ }
+  }
+});
 function toggleDark() {
   const isDark = document.documentElement.classList.toggle('dark');
   localStorage.setItem('cs-dark', isDark ? '1' : '0');
