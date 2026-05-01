@@ -468,7 +468,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.11</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.12</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -1137,7 +1137,7 @@
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
-<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.11</div>
+<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.12</div>
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
@@ -2445,30 +2445,26 @@ async function generate() {
   try {
     let insureds = [], coverages = [], criteria = [], notifications = [];
 
-    if (E.cs || E.cd || E.ed) {
-      setProgress('Fetching compliance data\u2026', `Loading ${s.insuredsPath}`, 0);
-      insureds = (await fetchCSV(s.insuredsPath)).filter(r => r[C.client] === selectedClient.key);
+    // ── Route data loading through platform-aware wrapper ──
+    // loadClientData fetches from evident-sync OR trustlayer-sync based on client.platform
+    setProgress('Fetching compliance data…', `Loading data for ${selectedClient.name}`, 0);
+    const clientData = await loadClientData(selectedClient.key);
 
-      setProgress('Fetching custom properties\u2026', `Loading ${s.customPropsPath}`, 0);
+    if (E.cs || E.cd || E.ed) {
+      insureds = clientData.insureds;
+      // Enrich with custom properties
       try {
-        const allProps = (await fetchCSV(s.customPropsPath)).filter(r => r['client'] === selectedClient.key);
-        insureds = enrichInsureds(insureds, allProps);
+        insureds = enrichInsureds(insureds, clientData.custom_properties);
       } catch(e) { console.warn('custom_properties skip:', e.message); }
     }
 
     if (E.cd || E.cs) {
-      setProgress('Fetching coverage data…', `Loading ${s.coveragesPath}`, 0);
-      try { coverages = (await fetchCSV(s.coveragesPath)).filter(r => r[C.cov_client] === selectedClient.key); }
-      catch(e) { console.warn('coverages skip:', e.message); }
-      setProgress('Fetching NC reasons…', `Loading ${s.criteriaPath}`, 0);
-      try { criteria = (await fetchCSV(s.criteriaPath)).filter(r => r[C.crit_client] === selectedClient.key); }
-      catch(e) { console.warn('criteria skip:', e.message); }
+      coverages = clientData.coverages;
+      criteria  = clientData.criteria;
     }
 
     if (E.es || E.ed) {
-      setProgress('Fetching engagement data\u2026', `Loading ${s.notificationsPath}`, 0);
-      try { notifications = (await fetchCSV(s.notificationsPath)).filter(r => r[C.notif_client] === selectedClient.key); }
-      catch(e) { console.warn('notifications skip:', e.message); }
+      notifications = clientData.engagement;
     }
 
     const reportDate   = new Date().toISOString().split('T')[0];
