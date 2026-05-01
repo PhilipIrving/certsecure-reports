@@ -233,6 +233,9 @@
       user-select: none;
     }
     .client-card:hover { border-color: var(--blue); background: var(--blue-light); }
+    .platform-badge { display:inline-block;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle; }
+    .platform-badge.evident { background:#E8ECF5;color:#3872B8; }
+    .platform-badge.tl      { background:#FFF3E0;color:#E65100; }
     .client-card.selected {
       border-color: var(--blue);
       background: var(--blue-light);
@@ -465,7 +468,7 @@
       <div style="text-align:center;margin-top:14px">
         <a href="#" class="login-link" onclick="showView('forgot');return false">Forgot password?</a>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.08</div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;font-weight:600;color:#5A6B7B;letter-spacing:.06em;border-top:1px solid #F1F5F9;padding-top:10px">v0.11</div>
       <div class="login-footer">🔒 Confidential — HUB CertSecure. Unauthorized access is prohibited.</div>
     </div>
 
@@ -612,6 +615,26 @@
           <label class="form-lbl">Engagement CSV</label>
           <input type="text" id="s-notifications" placeholder="data/engagement.csv">
           <div class="form-hint">Email event data — used for all Engagement reports</div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">TrustLayer Repository</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-grp">
+              <label class="form-lbl">TL Data Owner</label>
+              <input type="text" id="s-tl-owner" placeholder="PhilipIrving">
+              <div class="form-hint">Username or org that owns the trustlayer-sync repo</div>
+            </div>
+            <div class="form-grp">
+              <label class="form-lbl">TL Repository</label>
+              <input type="text" id="s-tl-repo" placeholder="trustlayer-sync">
+            </div>
+            <div class="form-grp">
+              <label class="form-lbl">TL Branch</label>
+              <input type="text" id="s-tl-branch" placeholder="main">
+              <div class="form-hint">TL clients use the same CSV paths and Access Token as above</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1063,6 +1086,16 @@
           <div class="form-hint">Used for API access and logos</div>
         </div>
         <div class="form-grp">
+          <label class="form-lbl">Platform</label>
+          <select id="ce-platform">
+            <option value="evident">Evident</option>
+            <option value="trustlayer">TrustLayer</option>
+          </select>
+        </div>
+            <option value="general">General</option>
+            <option value="project">Project (Subcontractors)</option>
+            <option value="location">Location (Tenants)</option>
+        <div class="form-grp">
           <label class="form-lbl">Structure</label>
           <select id="ce-structure">
             <option value="general">General</option>
@@ -1104,7 +1137,7 @@
 
 <div class="toast" id="toast"></div>
 </div><!-- end main-app -->
-<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.08</div>
+<div id="version-badge" style="position:fixed;bottom:10px;right:14px;font-size:11px;font-weight:600;color:rgba(90,107,123,0.6);z-index:9998;pointer-events:none;letter-spacing:.04em">v0.11</div>
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
@@ -1520,6 +1553,7 @@ const DEFAULTS = {
   insuredsPath:'data/insureds.csv', coveragesPath:'data/coverages.csv',
   criteriaPath:'data/criteria.csv', customPropsPath:'data/custom_properties.csv',
   notificationsPath:'data/engagement.csv',
+  tlOwner:'PhilipIrving', tlRepo:'trustlayer-sync', tlBranch:'main',
 };
 function getSettings() { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('cs-settings') || '{}') }; }
 function openSettings() {
@@ -1534,6 +1568,9 @@ function openSettings() {
   document.getElementById('s-criteria').value      = s.criteriaPath;
   document.getElementById('s-customprops').value   = s.customPropsPath;
   document.getElementById('s-notifications').value = s.notificationsPath;
+  document.getElementById('s-tl-owner').value   = s.tlOwner;
+  document.getElementById('s-tl-repo').value    = s.tlRepo;
+  document.getElementById('s-tl-branch').value  = s.tlBranch;
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
@@ -1548,6 +1585,9 @@ function saveSettings() {
     criteriaPath:     document.getElementById('s-criteria').value.trim(),
     customPropsPath:  document.getElementById('s-customprops').value.trim(),
     notificationsPath:document.getElementById('s-notifications').value.trim(),
+    tlOwner:           document.getElementById('s-tl-owner').value.trim(),
+    tlRepo:            document.getElementById('s-tl-repo').value.trim(),
+    tlBranch:          document.getElementById('s-tl-branch').value.trim() || 'main',
   }));
   closeSettings(); toast('Settings saved', 'success');
 }
@@ -1938,6 +1978,10 @@ const CLIENTS_FALLBACK = [
   { client_name:"EMMES",                               rp_common_name:"emmes",           structure:"location", active:true },
   { client_name:"Gart Properties",                     rp_common_name:"gartproperties",  structure:"location", active:true },
   { client_name:"The Abbey Management Company",        rp_common_name:"theabbeycompany", structure:"location", active:true },
+  // TrustLayer clients
+  { client_name:"Block Real Estate",                   rp_common_name:"blockrealestate", structure:"location", active:true, platform:"trustlayer" },
+  { client_name:"Construction Mgmt Inc",               rp_common_name:"constructionmgmt",structure:"project",  active:true, platform:"trustlayer" },
+  { client_name:"QTS Data Centers",                    rp_common_name:"qtsdatacenters",  structure:"general",  active:true, platform:"trustlayer" },
 ];
 
 // Live CLIENTS array (rebuilt from JSON) and META map
@@ -1946,10 +1990,15 @@ let CLIENT_META_MAP = {};  // client_name -> full JSON config (go_live_date etc)
 
 function buildClientsArray(data) {
   return data.filter(c => c.active !== false).map(c => ({
-    name: c.client_name,
-    key:  c.client_name,
-    structure: c.structure || 'general',
+    name:     c.client_name,
+    key:      c.client_name,
+    structure:c.structure || 'general',
+    platform: c.platform  || 'evident',
   }));
+}
+function isTLClient(keyOrClient) {
+  const c = typeof keyOrClient === 'string' ? CLIENTS.find(x => x.key === keyOrClient) : keyOrClient;
+  return c?.platform === 'trustlayer';
 }
 
 async function loadClientsFromConfig() {
@@ -2051,7 +2100,7 @@ function renderConfigTable(filter='') {
 
   const tbody = rows.map((c,i) => `
     <tr>
-      <td style="font-weight:600">${esc(c.client_name)}</td>
+      <td style="font-weight:600">${esc(c.client_name)} <span style="font-size:8px;font-weight:800;padding:1px 5px;border-radius:4px;${c.platform==='trustlayer'?'background:#FFF3E0;color:#E65100':'background:#E8ECF5;color:#3872B8'}">${c.platform==='trustlayer'?'TL':'EV'}</span></td>
       <td style="color:var(--muted);font-size:11px">${esc(c.rp_common_name||'')}</td>
       <td><span class="struct-badge">${STRUCT_LABEL[c.structure]||c.structure}</span></td>
       <td style="font-size:11px;color:var(--muted)">${c.program_start_date||'—'}</td>
@@ -2086,11 +2135,8 @@ function openAddClient() {
   document.getElementById('ce-name-hint').style.display = '';
   document.getElementById('client-name-lock').style.display = 'none';
   document.getElementById('ce-api-name').value = '';
+  document.getElementById('ce-platform').value = 'evident';
   document.getElementById('ce-structure').value = 'general';
-  document.getElementById('ce-program-start').value = '';
-  document.getElementById('ce-go-live').value = '';
-  document.getElementById('ce-active').checked = true;
-  document.getElementById('ce-delete-btn').style.display = 'none';
   document.getElementById('ce-save-btn').textContent = 'Add Client';
   document.getElementById('ce-msg').style.display = 'none';
   document.getElementById('client-edit-overlay').classList.add('open');
@@ -2105,8 +2151,8 @@ function openEditClient(idx) {
   document.getElementById('ce-name-hint').style.display = 'none';
   document.getElementById('client-name-lock').style.display = '';
   document.getElementById('ce-api-name').value = c.rp_common_name || '';
+  document.getElementById('ce-platform').value = c.platform || 'evident';
   document.getElementById('ce-structure').value = c.structure || 'general';
-  document.getElementById('ce-program-start').value = c.program_start_date || '';
   document.getElementById('ce-go-live').value = c.go_live_date || '';
   document.getElementById('ce-active').checked = c.active !== false;
   document.getElementById('ce-delete-btn').style.display = canAdminClients() ? '' : 'none';
@@ -2124,7 +2170,8 @@ async function saveClientEdit() {
   const msgEl = document.getElementById('ce-msg');
   const name = document.getElementById('ce-client-name').value.trim();
   const api  = document.getElementById('ce-api-name').value.trim();
-  const struct = document.getElementById('ce-structure').value;
+  const platform= document.getElementById('ce-platform').value;
+  const struct  = document.getElementById('ce-structure').value;
   const progStart = document.getElementById('ce-program-start').value;
   const goLive    = document.getElementById('ce-go-live').value;
   const active    = document.getElementById('ce-active').checked;
@@ -2142,7 +2189,7 @@ async function saveClientEdit() {
   btn.disabled = true; btn.textContent = 'Saving…';
 
   const updated = [..._allClientsData];
-  const entry = { client_name: name, rp_common_name: api, program_start_date: progStart, go_live_date: goLive, structure: struct, active };
+  const entry = { client_name: name, rp_common_name: api, program_start_date: progStart, go_live_date: goLive, structure: struct, platform, active };
 
   if (_editingIndex === null) {
     updated.push(entry);
@@ -2199,7 +2246,7 @@ function renderGrids() {
       const ts = localStorage.getItem('cs-last-report-' + sk);
       const lr = ts ? new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
       return '<div class="client-card" id="cc-' + sk + '" onclick="pickClient(\'' + c.key.replace(/'/g,"\\'").replace(/&/g,'\\x26') + '\')">' +
-        '<div class="client-name">' + c.name + '</div>' +
+        '<div class="client-name">' + c.name + '<span class="platform-badge ' + (c.platform==='trustlayer'?'tl">TL':'evident">EV') + '</span></div>' +
         '<span class="client-badge ' + STRUCT[struct].badgeClass + '">' + STRUCT[struct].label + '</span>' +
         (lr ? '<div style="font-size:9px;color:var(--muted);margin-top:4px">' + lr + '</div>' : '') +
         '</div>';
@@ -4212,6 +4259,71 @@ ${(wins.length || issues.length || topNC.length) ? `
   <div style="text-align:right">${esc(client)} &nbsp;·&nbsp; HUB CertSecure &nbsp;·&nbsp; ${fd}</div>
 </div>
 </body></html>`;
+}
+
+
+// ──────────────────────────────────────────────
+// TRUSTLAYER DATA LOADING + NORMALIZATION
+// Converts TL CSV structure → same shape as Evident CSVs
+// so all 7 report builders work without modification
+// ──────────────────────────────────────────────
+
+// TL pipeline outputs same CSV format as Evident — just a different repo
+// fetchTLCSV uses the trustlayer-sync repo instead of evident-sync
+async function fetchTLCSV(path) {
+  const s = getSettings();
+  const owner  = s.tlOwner  || 'PhilipIrving';
+  const repo   = s.tlRepo   || 'trustlayer-sync';
+  const branch = s.tlBranch || 'main';
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  const headers = { 'Accept': 'application/vnd.github.v3.raw' };
+  if (s.pat) headers['Authorization'] = `Bearer ${s.pat}`;
+  const res = await fetch(url, { headers });
+  if (res.status === 401) throw new Error('Authentication failed. Check your Access Token in Settings.');
+  if (res.status === 404) throw new Error(`Could not find ${path} in ${owner}/${repo}.`);
+  if (!res.ok) throw new Error(`Could not load ${path} (HTTP ${res.status}).`);
+  return Papa.parse(await res.text(), { header: true, skipEmptyLines: true }).data;
+}
+
+async function loadTLData(clientName) {
+  // TL pipeline already outputs Evident-compatible CSVs — load and filter directly
+  const [insureds, coverages, criteria, customProps, engagement] = await Promise.all([
+    fetchTLCSV('data/insureds.csv'),
+    fetchTLCSV('data/coverages.csv'),
+    fetchTLCSV('data/criteria.csv'),
+    fetchTLCSV('data/custom_properties.csv').catch(() => []),
+    fetchTLCSV('data/engagement.csv').catch(() => []),
+  ]);
+  return {
+    insureds:          insureds.filter(r => r[C.client] === clientName),
+    coverages:         coverages.filter(r => r[C.client] === clientName),
+    criteria:          criteria.filter(r => r[C.client] === clientName),
+    custom_properties: customProps.filter(r => r[C.client] === clientName),
+    engagement:        engagement.filter(r => r[C.client] === clientName),
+  };
+}
+
+// Wrapper: loads data for the selected client from correct platform
+async function loadClientData(clientName) {
+  if (isTLClient(clientName)) {
+    return loadTLData(clientName);
+  }
+  // Evident: load the standard CSVs and filter to this client
+  const s = getSettings();
+  const [insureds, coverages, criteria, customProps, notifs] = await Promise.all([
+    fetchCSV(s.insuredsPath),
+    fetchCSV(s.coveragesPath),
+    fetchCSV(s.criteriaPath),
+    fetchCSV(s.customPropsPath),
+    fetchCSV(s.notificationsPath),
+  ]);
+  return {
+    insureds:          insureds.filter(r => r[C.client] === clientName),
+    coverages:         coverages.filter(r => r[C.client] === clientName),
+    criteria:          criteria.filter(r => r[C.client] === clientName),
+    custom_properties: customProps.filter(r => r[C.client] === clientName),
+    engagement:        notifs.filter(r => r[C.client] === clientName),
+  };
 }
 
 
